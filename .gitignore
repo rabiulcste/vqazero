@@ -1,0 +1,11 @@
+config.py
+__pycache__/
+*.pyc
+output/
+slurm_logs/
+scripts/
+decompose-viewer-app/
+report_gen.py
+local_files/
+mlfoundations/
+minigpt4/

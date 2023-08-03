@@ -1,0 +1,51 @@
+dataset: carets
+subset: basic
+
+templates:
+  3f34b424-89f8-495c-b129-6f1c6d8e84b4: !Template
+    id: 3f34b424-89f8-495c-b129-6f1c6d8e84b4
+    jinja: 'Please answer the following question. {{ question }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_answer_the_following_question
+    author: Rabiul Awal
+
+  a8717b5d-2d1f-45e5-9bc7-cb44e20a71e6: !Template
+    id: a8717b5d-2d1f-45e5-9bc7-cb44e20a71e6
+    jinja: 'Please answer the following question about the image. {{ question }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_answer_the_following_question_image
+    author: Rabiul Awal
+
+  90a11a8c-60f4-4f68-a29e-6aa8e173a405: !Template
+    id: 90a11a8c-60f4-4f68-a29e-6aa8e173a405
+    jinja: 'Please answer the following question in short. {{ question }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_answer_the_following_question_in_short
+    author: Rabiul Awal
+
+  8a3c3d3f-734e-4f9b-a05a-345c647e67ed: !Template
+    id: 8a3c3d3f-734e-4f9b-a05a-345c647e67ed
+    jinja: '{{ question }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_null
+    author: Rabiul Awal
+
+  d7c44a60-0f7c-4802-a55e-d8820eb0c777: !Template
+    id: d7c44a60-0f7c-4802-a55e-d8820eb0c777
+    jinja: 'Question: {{ question }} Answer: '
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_question_answer
+    author: Rabiul Awal
+
+  8930e9e9-f3d4-4c0b-99bb-4c4ad0e30bb5: !Template
+    id: 8930e9e9-f3d4-4c0b-99bb-4c4ad0e30bb5
+    jinja: 'Question: {{ question }} Short answer: '
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_question_short_answer
+    author: Rabiul Awal

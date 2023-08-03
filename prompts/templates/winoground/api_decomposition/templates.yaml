@@ -1,0 +1,306 @@
+dataset: winoground
+subset: api_decomposition
+
+templates:
+  0c0b0b0b-0d25-431b-ad2c-1daaf6ae88bb: !Template
+    id: 0c0b0b0b-0d25-431b-ad2c-1daaf6ae88bb
+    jinja: |
+      {% if step == "step1" %}
+        "What is the literal meaning of the image shown in the caption '{{ caption }}'?"
+      {% elif step == "step2" and history is defined %}
+        "{{ history }} Create questions and answers to verify if the caption '{{ caption }}' matches the image. Then, write a step-by-step rationale statement based on the answers."
+      {% elif step == "step2" and chat_history is not defined %}
+        "Missing input variable. Please provide a value for 'chat_history'."
+      {% else %}
+        "Invalid step. Please choose a valid step."
+      {% endif %}
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: decompose_caption_into_question
+    author: Rabiul Awal
+
+  b39e26c2-3aa3-4a2d-ba21-382c418e7219: !Template
+    id: b39e26c2-3aa3-4a2d-ba21-382c418e7219
+    jinja: |
+      {% if step == "step1" %}
+        "What is the image in the caption '{{ caption }}' depicting?"
+      {% elif step == "step2" and history is defined %}
+        "{{ history }} Generate a set of questions and answers to verify the accuracy of the caption '{{ caption }}' in relation to the image."
+      {% elif step == "step2" and chat_history is not defined %}
+        "Missing input variable. Please provide a value for 'chat_history'."
+      {% else %}
+        "Invalid step. Please select a valid step."
+      {% endif %}
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: decompose_caption_into_question_v2
+    author: Rabiul Awal
+
+  8e1f3007-c56a-4dc9-8f8f-43d7d16a09db: !Template
+    id: 8e1f3007-c56a-4dc9-8f8f-43d7d16a09db
+    jinja: |
+        {% set caption_in_context = "An old man kissing a young girl with a cowboy hat." %}
+        {% set statement_in_context = "A young person kisses an old person." %}
+        {% set object1 = "young person" %}
+        {% set object2 = "old person" %}
+
+        You are required to use a VQA system to verify if a user's statement matches a given image word-for-word. To provide context, the system generates a caption, which may not be entirely informative. To accomplish this task, the user''s complex statement will be simplified into a series of sub-questions of increasing complexity, allowing for a step-by-step reasoning process. Try to imagine such an image. The aim is to achieve an exact word-for-word match between the statement and the image. The sub-questions will be utilized to obtain a response from the VQA model, which will provide a final verdict. \n
+        Model-generated caption: "{{ caption_in_context }}"
+        User statement: "{{ statement_in_context }}"
+        Sub-questions:
+        Q1: find the {{ object1 }}
+        Q2: find the {{ object2 }}
+        Q3: Where is the kiss taking place, on the lips or the cheek?
+        Q4: Is it the {{ object1 }} who is kissing the {{ object2 }}?
+        Q5: Who is initiating the kiss?
+
+        Model-generated caption: "{{ caption }}"
+        User statement: "{{ statement }}"
+        Sub-questions:
+    
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: exact_word_match_vqa_subq_deomposition
+    author: Rabiul Awal
+
+  d1c95471-3d29-4fc8-8e31-52b2ba320d15: !Template
+    id: d1c95471-3d29-4fc8-8e31-52b2ba320d15
+    jinja: |
+        {% set statement_in_context = "A young person kisses an old person." %}
+        {% set object1 = "young person" %}
+        {% set object2 = "old person" %}
+
+        You are required to use a VQA system to verify if a user's statement matches a given image word-for-word. To accomplish this task, the user's complex statement will be simplified into a series of sub-questions of increasing complexity, allowing for a step-by-step reasoning process. Play close attention to word order in the user statement. Try to imagine such an image. The aim is to achieve an exact word-for-word match between the statement and the image. The sub-questions will be utilized to obtain a response from the VQA model, which will provide a final verdict.
+
+        User statement: "{{ statement_in_context }}"
+        Sub-questions:
+        Q1: find the {{ object1 }}
+        Q2: find the {{ object2 }}
+        Q3: Where is the kiss taking place, on the lips or the cheek?
+        Q4: Is it the {{ object1 }} who is kissing the {{ object2 }}?
+        Q5: Who is initiating the kiss?
+        
+        User statement: "{{ statement }}"
+        Sub-questions:
+
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: vqa_word_match_subq_decomposition
+    author: Rabiul Awal
+
+  1b0b0b0b-0d25-431b-ad2c-1daaf6ae88bb: !Template
+    id: 1b0b0b0b-0d25-431b-ad2c-1daaf6ae88bb
+    jinja: |
+        Convert this user statement about an image into a few questions for the VQA task (maximum 3). Do not write long, complex questions. Try to write easy and specific questions about each entity in the provided text. The expected answer shouldn't be too long.
+       
+        User statement: a white dog is on a brown couch
+        Sub-questions:
+        Q1: What is the colour of the dog?
+        Q2: Where is the dog located?
+        Q3: Is the couch brown?
+
+        User statement: A young person kisses an old person.
+        Sub-questions:
+        Q1: Is the young person kissing the old person?
+        Q2: Who is initiating the kiss?
+
+        User statement: The person with more facial hair sleeps while the other lies awake
+        Sub-questions:
+        Q1: Which person has more facial hair (male or female)?
+        Q2: Is the male person sleeping?
+        Q3: Is the female awake?
+
+        User statement: the more content person has the healthier food and the less content person has the less healthy food
+        Sub-questions:
+        Q1: Who is the happy person?
+        Q2: Is it the happy person eating healthier food? 
+        Q3: Is the unhappy person eating unhealthy food?
+
+        User statement: there is less orange juice than milk
+        Q1: how much orange juice?
+        Q2: how much milk?
+        Q3: Is there more milk than orange juice?
+
+        User statement: {{ statement }}
+        Sub-questions:
+
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: simple_subquestions
+    author: Rabiul Awal
+
+  ff08d4ed-abb4-40cc-ae1f-50e8d08ce9dc: !Template
+    id: ff08d4ed-abb4-40cc-ae1f-50e8d08ce9dc
+    jinja: |
+        Convert this user statement about an image into a few questions for the VQA task (maximum 4). Do not write long, complex questions. Try to write easy and specific questions about each entity in the provided text. The expected answer shouldn't be too long.
+       
+        User statement: a white dog is on a brown couch
+        Sub-questions:
+        Q1: What is the colour of the dog (brown or white)?
+        Q2: Where is the dog located?
+        Q3: Is the couch white or brown?
+        Q4: Is the dog on the couch?
+
+        User statement: A young person kisses an old person.
+        Sub-questions:
+        Q1: Is the young person initiating the kiss?
+        Q2: Is the young person's mouth touching the old person's cheek?
+        Q3: Is it the old person who is kissing the young person on cheek?
+
+        User statement: The person with more facial hair sleeps while the other lies awake
+        Sub-questions:
+        Q1: Which person has more facial hair (male or female)?
+        Q2: Is the male person's eyes open?
+        Q3: Is the female person's eyes closed?
+
+        User statement: the more content person has the healthier food and the less content person has the less healthy food
+        Sub-questions:
+        Q1: Is the healthy food in front of a person who is smiling?
+        Q2: Is the junk food in front of person who looks sad? 
+        Q3: Is the unhappy person eating junk food?
+
+        User statement: there is less orange juice than milk
+        Q1: how much orange juice?
+        Q2: how much milk?
+        Q3: Is the milk (glass or container) big?
+        Q4: Is the orange juice (glass or container) small?
+
+        User statement: a big cat is next to a small dog
+        Q1: Is the cat big?
+        Q2: Is the dog small?
+
+        User statement: a dog sitting on a couch with a person lying on the floor
+        Q1: Where is the dog sitting?
+        Q2: Where is the person lying?
+        Q1: Is the dog sitting on the couch?
+        Q2: Is the person lying on the floor?
+
+        User statement: two boats and one direction down the stream
+        Q1: How many boats are there?
+        Q2: Is the direction down the stream one way or two ways?
+        Q3: Count the number of boats going down the stream.
+
+        User statement: it wears a hat but the person doesn't"
+        Q1: Does the person wear a hat?
+        Q2: Who is wearing a hat?
+        Q3: What are the objects in the image?
+
+        User statement: heart-shaped food on circular wood
+        Q1: What is the shape of the food?
+        Q2: What is the shape of the wood?
+        Q3: Is the food circular or heart-shaped?
+        Q4: Is the wood circular?
+ 
+        User statement: {{ statement }}
+        Sub-questions:
+
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: breakdown_questions
+    author: Rabiul Awal
+
+  b75af7da-7998-4f61-885b-61d73a2940bc: !Template
+    id: b75af7da-7998-4f61-885b-61d73a2940bc
+    jinja: |
+        Convert this user statement about an image into a few questions for the VQA task (maximum 4). Do not write long, complex questions. Try to write easy and specific questions about each entity in the provided text. The expected answer shouldn't be too long.
+       
+        User statement: User a car smashed into a tree
+        Sub-questions:
+        Q1: Describe the image 
+        Q2: What happened to the car?
+        Q3: Is the car smashed?
+        Q4: Is the tree broken?
+
+        User statement: the baby on the phone is next to an adult
+        Sub-questions:
+        Q1: Who is using the phone?
+        Q2: Is the baby on the phone?
+        Q2: Is the adult next to the baby?
+
+        User statement: there are more computers than people
+        Sub-questions:
+        Q1: Describe the image
+        Q3: Is there more computers than people?
+
+        User statement: the younger person is silent while the other is making noise
+        Sub-questions:
+        Q1: What's happening in the image?
+        Q2: Which person is making noise, the younger or older person?
+        Q3: Is the younger person silent?
+        Q4: Is the older person making noise?
+
+        User statement: there are more pineapples than boxes
+        Sub-questions:
+        Q1: Deescribe the image
+        Q2: Do you see a lot of pineapples?
+        Q3: Which one is more, pineapples or boxes?
+        Q4: Is there more pineapples than boxes?
+
+        User statement: a big cat is next to a small dog
+        Q1: Is the cat looks big?
+        Q2: Is the dog looks small?
+        Q3: Is the cat bigger than dog?
+
+        User statement: a dog sitting on a couch with a person lying on the floor
+        Q1: Where is the dog sitting?
+        Q2: Who is on the floor?
+        Q1: Is the dog sitting on the couch and the person lying on the floor?
+
+        User statement: a white dog is on a brown couch
+        Sub-questions:
+        Q1: Describe the image
+        Q2: What is the colour of the dog (brown or white)?
+        Q3: Where is the dog located?
+        Q4: Is the couch white or brown?
+
+        Now, do the same for the following user statement. If it also appears in the previous list, don't skip it.
+        User statement: {{ statement }}
+        Sub-questions:
+
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: describe_breakdown_questions
+    author: Rabiul Awal
+
+  a6cca1a8-301d-4fe0-aa0d-f70a5a3e02d7: !Template
+    id: a6cca1a8-301d-4fe0-aa0d-f70a5a3e02d7
+    jinja: |
+        Your task is to verify a user's statement regarding an image, using a set of subquestions and their respective answers to verify whether the statement matches the image. To accomplish this, you need to provide a rationale and a final answer that are based on the subquestions and their answers provided below.
+       
+        User statement: The cold-blooded animal isn't happy in warm water
+        Sub-Sub-questions and their answers:
+        Q1: Is the animal warm-blooded or cold-blooded?
+        cold-blooded
+        Q2: Is the water cold or warm?
+        warm
+        Q3: Is the animal happy or unhappy in warm water?
+        unhappy
+
+        Now generate the rationale and final answer based on the above subquestions and corresponding answers. Answer yes if stamenet matches the image, otherwise no. 
+        Rationale: Q1 tells us that the animal in the image is indeed cold-blooded. Q2 states that the water is warm, which matches the user's statement. Finally, Q3 indicates that the animal is unhappy in warm water, which exactly matches the user's statement. Therefore, based on the subquestions and their answers, we can conclude that the user's statement matches the image.",
+        Final answer: Yes
+
+        User statement: The cold-blooded animal isn't happy in warm water
+        Sub-questions and their answers:
+        Q1: Is the animal warm-blooded or cold-blooded?
+        warm-blooded
+        Q2: Is the water cold or warm?
+        cold
+        Q3: Is the animal happy or unhappy in warm water?
+        unhappy
+        
+        Now generate the rationale and final answer based on the above subquestions and corresponding answers. Answer yes if stamenet matches the image, otherwise no. 
+        Rationale: The user states that the animal in the image is cold-blooded and not happy in warm water. However, the subquestions indicate that the animal is actually warm-blooded and the water in the image is cold. Therefore, the user's statement does not match the image.
+        Final answer: No
+
+
+        ####
+
+
+
+    name: final_instruction
+
+  
+        
+
+  

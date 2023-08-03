@@ -1,0 +1,20 @@
+dataset: winoground
+subset: api_question
+
+templates:
+  0c0b0b0b-0d25-431b-ad2c-1daaf6ae88bb: !Template
+    id: 0c0b0b0b-0d25-431b-ad2c-1daaf6ae88bb
+    jinja: 'Convert this question into a yes/no question for the Visual Question answering task: \n "{{ caption }}."'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: convert_question_to_binary_vqa
+    author: Rabiul Awal
+
+  a1b2c3d4-e5f6-4g7h-8i9j-k1l2m3n4o5p6: !Template
+    id: a1b2c3d4-e5f6-4g7h-8i9j-k1l2m3n4o5p6
+    jinja: 'What question will be used to verify if this caption matches the corresponding image? \n "{{ caption }}."'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: convert_caption_to_question
+    author: Rabiul Awal
+
