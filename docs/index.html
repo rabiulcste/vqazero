@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Investigating Prompting Techniques for VQA</title>
+    <style>
+        img {
+            max-width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Investigating Prompting Techniques for Zero- and Few-Shot Visual Question Answering</h1>
+
+<p>This codebase contains the code for the paper <a href="https://arxiv.org/abs/2109.05281">Investigating Prompting Techniques for Zero- and Few-Shot Visual Question Answering</a>.</p>
+<img src="images/vqa_prompt_teaser.png" alt="VQA Prompt Teaser" width="850"/>
+
+<h2>VQA Formats</h2>
+<ul>
+    <li>Standard VQA: Standard VQA task format.</li>
+    <li>Caption VQA: Model-generated caption first and then applies standard VQA format.</li>
+    <li>Chain-of-thought VQA: Chain-of-thought VQA format.</li>
+</ul>
+
+<h2>Prompt Templates</h2>
+<p>We have a list of prompt templates that can be used with different VQA formats. Please check the <code>prompts/templates/{dataset_name}</code> for the list of templates.</p>
+<img src="images/vqa_prompt_templates.png" alt="VQA Prompt Templates" width="850"/>
+
+<h2>Datasets</h2>
+<ul>
+    <li><strong>OK-VQA</strong> -  You can download the dataset from <a href="https://okvqa.allenai.org/">allenai</a>. Download files and put them and unzip in the folder <code>dataset/</code> folder.</li>
+    <li><strong>AOK-VQA</strong> -  You can download the dataset from <a href="https://allenai.org/project/a-okvqa/home">allenai</a>. Download files and put them and unzip in the folder <code>dataset/</code> folder.</li>
+    <li><strong>GQA</strong> - You can download the dataset from Stanford <a href="https://cs.stanford.edu/people/dorarad/gqa/download.html">website</a>. Download files and put them and unzip in the folder <code>dataset/</code> folder.</li>
+    <li><strong>Winoground</strong> -  The Winoground dataset can be used using the Hugging Face <a href="https://huggingface.co/docs/datasets/index">datasets</a> library.</li>
+</ul>
+
+<h2>Example Usage</h2>
+<pre>
+python3 main_v2.py --dataset_name okvqa --model_name blip2_t5_flant5xxl --vqa_format basic_qa --prompt_name prefix_your_task_knowledge_qa_short_answer
+
+python3 main_v2.py --dataset_name okvqa --model_name blip2_t5_flant5xxl --vqa_format caption_qa --prompt_name prefix_your_task_knowledge_qa_short_answer,prefix_promptcap
+
+python3 main_v2.py --dataset_name okvqa --model_name blip2_t5_flant5xxl --vqa_format cot_qa --prompt_name prefix_think_step_by_step_rationale
+</pre>
+
+<h2>Citation</h2>
+<pre>
+@article{awal2023investigating,
+  title={Investigating Prompting Techniques for Zero-and Few-Shot Visual Question Answering},
+  author={Awal, Rabiul and Zhang, Le and Agrawal, Aishwarya},
+  journal={arXiv preprint arXiv:2306.09996},
+  year={2023}
+}
+</pre>
+
+</body>
+</html>

@@ -4,7 +4,7 @@
 
 This codebase contains the code for the paper [Investigating Prompting Techniques for Zero- and Few-Shot Visual Question Answering](https://arxiv.org/abs/2109.05281).
 
-<img src="docs/vqa_prompt_teaser.png" alt="VQA Prompt Teaser" width="850"/>
+<img src="docs/images/vqa_prompt_teaser.png" alt="VQA Prompt Teaser" width="850"/>
 
 
 ## VQA Formats
@@ -17,7 +17,7 @@ The project supports the following VQA formats:
 ## Prompt Templates
 We have a list of prompt templates that can be used with different VQA formats. Please check the `prompts/templates/{dataset_name}` for the list of templates.
 
-<img src="docs/vqa_prompt_templates.png" alt="VQA Prompt Templates" width="850"/>
+<img src="docs/images/vqa_prompt_templates.png" alt="VQA Prompt Templates" width="850"/>
 
 
 ## Datasets
