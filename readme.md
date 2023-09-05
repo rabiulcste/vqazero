@@ -2,7 +2,7 @@
 # Investigating Prompting Techniques for Zero- and Few-Shot Visual Question Answering
 
 
-This codebase contains the code for the paper [Investigating Prompting Techniques for Zero- and Few-Shot Visual Question Answering](https://arxiv.org/abs/2109.05281).
+This codebase contains the code for the paper [Investigating Prompting Techniques for Zero- and Few-Shot Visual Question Answering](https://arxiv.org/abs/2306.09996).
 
 <img src="docs/vqa_prompt_teaser.png" alt="VQA Prompt Teaser" width="850"/>
 
