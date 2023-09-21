@@ -4,31 +4,23 @@ import os
 import pprint
 import random
 import re
-import pandas as pd
 from typing import Dict, Tuple
 
 import openai
+import pandas as pd
 import torch
 from datasets import Dataset, load_dataset
+from tenacity import (retry, stop_after_attempt,  # for exponential backoff
+                      wait_random_exponential)
 from tqdm import tqdm
-from transformers import (
-    AutoModelForCausalLM,
-    AutoModelForSeq2SeqLM,
-    AutoTokenizer,
-    OPTForCausalLM,
-    T5ForConditionalGeneration,
-)
-from tenacity import (
-    retry,
-    stop_after_attempt,
-    wait_random_exponential,
-)  # for exponential backoff
-
+from transformers import (AutoModelForCausalLM, AutoModelForSeq2SeqLM,
+                          AutoTokenizer, OPTForCausalLM,
+                          T5ForConditionalGeneration)
 
 from utils import config
 from utils.globals import MODEL_CLS_INFO
-from utils.logger import Logger
 from utils.handler import PromptingHandler
+from utils.logger import Logger
 
 # Initialize the GPT3API config
 api_key = config.OPENAI_API_KEY

@@ -1,0 +1,112 @@
+{
+    "llava": {
+        "okvqa": {
+            "io_structure": {
+                "input_keys": "Input",
+                "output_keys": "Short answer"
+            },
+            "samples": [
+                "Input: What sport can you use this for? You can use this motorcycle for off-road sports, such as motocross, enduro, or trail riding. Short answer: motocross",
+                "Input: What area of a school might this be? This area of the school might be a library or a classroom, as there are books and chairs in the background. Short answer: library",
+                "Input: What type od bread is this meal made from? This meal is made from pita bread. Short answer: pita",
+                "Input: Which brand of car is shown in this picture? The brand of car shown in the picture is a Volkswagen. Short answer: Volkswagen",
+                "Input: Is this a private or public room? This is a public room. Short answer: public",
+                "Input: What is the name of the device that is protecting people from the rain in this picture? The device that is protecting people from the rain in this picture is an umbrella. Short answer: umbrella",
+                "Input: Why might someone go to this place? Someone might go to this place, which appears to be a busy street in a city, for various reasons such as shopping, dining, socializing, or attending events. Short answer: shopping",
+                "Input: How tall do these animals get? Giraffes can grow up to 18 feet tall. Short answer: 18 feet"
+            ]
+        },
+        "aokvqa": {
+            "io_structure": {
+                "input_keys": "Input",
+                "output_keys": "Short answer"
+            },
+            "samples": [
+                "Input: What type of device is sitting next to the laptop? A cell phone is sitting next to the laptop. Short answer: cell phone",
+                "Input: What U.S. city is the most likely setting for this street? The most likely setting for this street is New York City. Short answer: new york",
+                "Input: What kind of gathering does this look like? This looks like a family gathering or a casual dinner party. Short answer: family",
+                "Input: What position does the man holding the brown glove play? The man holding the brown glove is a catcher. Short answer: catcher",
+                "Input: What kind of pizza is this? This is a cheese pizza. Short answer: cheese",
+                "Input: A person following what kind of diet is least likely to eat this meal? A person following a vegetarian or vegan diet is least likely to eat this meal, as it contains meat and vegetables. Short answer: vegetarian",
+                "Input: What brand is the red truck? The red truck is a Dodge. Short answer: dodge",
+                "Input: What sport is being played in the image? The image shows a game of soccer being played. Short answer: soccer",
+                "Input: What event is this most likely? A dinner party. Short answer: dinner party",
+                "Input: Why is the person wearing a white jacket? He is chef. Short answer: chef",
+                "Input: The train is likely arriving at which American city? San Francisco. Short answer: san francisco",
+                "Input: Why do the cattle have their heads down to the ground? They are eating hay. Short answer: eating hay",
+                "Input: What are the people in the picture doing? They are skiing down snowy slope. Short answer: skiing",
+                "Input: What type of city district is this? This is a shopping district. Short answer: shopping"
+            ]
+        },
+        "gqa": {
+            "io_structure": {
+                "input_keys": "Input",
+                "output_keys": "Short answer"
+            },
+            "samples": [
+                "Input: What is the airplane flying above? The airplane is flying above an ocean. Short answer: ocean",
+                "Input: Is the shape of the bottle the same as that of the cake? No, the shape of the bottle is not the same as that of the cake. Short answer: no",
+                "Input: What is the girl in front of? The girl is standing in front of a traffic sign. Short answer: traffic sign",
+                "Input: Which side of the image is the beige car on? The beige car is on the left side of the image. Short answer: left",
+                "Input: What is the fruit that is green called? The fruit that is green is peer. Short answer: peer",
+                "Input: Do the sneakers look blue and comfortable? Yes, the sneakers appear to be blue and comfortable. Short answer: yes",
+                "Input: What wears the shoe? A pitcher wears the shoe. Short answer: pitcher",
+                "Input: What do you think hangs above the counter top? A banana hangs above the counter top. Short answer: banana",
+                "Input: On which side is the large microwave? The large microwave is on the left side of the kitchen. Short answer: left",
+                "Input: What is the man in the blue shirt attempting to do? He is attempting to cross the road. Short answer: cross road",
+                "Input: Why is the pipe on the back of the truck? it is being transported to a job site. Short answer: transport"
+            ]
+        }
+    },
+    "opt": {
+        "okvqa": {
+            "io_structure": {
+                "input_keys": "Input",
+                "output_keys": "Short answer"
+            },
+            "samples": [
+                "Input: What sport can you use this for? You can use this motorcycle for off-road sports, such as motocross, enduro, or trail riding. Short answer: motocross",
+                "Input: What area of a school might this be? This area of the school might be a library or a classroom, as there are books and chairs in the background. Short answer: library",
+                "Input: What type od bread is this meal made from? This meal is made from pita bread. Short answer: pita",
+                "Input: Which brand of car is shown in this picture? The brand of car shown in the picture is a Volkswagen. Short answer: Volkswagen",
+                "Input: Is this a private or public room? This is a public room. Short answer: public",
+                "Input: What is the name of the device that is protecting people from the rain in this picture? The device that is protecting people from the rain in this picture is an umbrella. Short answer: umbrella",
+                "Input: Why might someone go to this place? Someone might go to this place, which appears to be a busy street in a city, for various reasons such as shopping, dining, socializing, or attending events. Short answer: shopping",
+                "Input: How tall do these animals get? Giraffes can grow up to 18 feet tall. Short answer: 18 feet"
+            ]
+        },
+        "aokvqa": {
+            "io_structure": {
+                "input_keys": "Input",
+                "output_keys": "Short answer"
+            },
+            "samples": [
+                "Input: What type of device is sitting next to the laptop? A cell phone is sitting next to the laptop. Short answer: phone",
+                "Input: What U.S. city is the most likely setting for this street? The most likely setting for this street is New York City. Short answer: new york",
+                "Input: What kind of gathering does this look like? This looks like a family gathering or a casual dinner party. Short answer: family",
+                "Input: What position does the man holding the brown glove play? The man holding the brown glove is a catcher. Short answer: catcher",
+                "Input: What kind of pizza is this? This is a cheese pizza. Answer: cheese",
+                "Input: A person following what kind of diet is least likely to eat this meal? A person following a vegetarian or vegan diet is least likely to eat this meal, as it contains meat and vegetables. Short answer: vegetarian",
+                "Input: What brand is the red truck? The red truck is a Dodge. Short answer: dodge",
+                "Input: What sport is being played in the image? The image shows a game of soccer being played. Short answer: soccer"
+            ]
+        },
+        "gqa": {
+            "io_structure": {
+                "input_keys": "Input",
+                "output_keys": "Short answer"
+            },
+            "samples": [
+                "Input: What is the airplane flying above? The airplane is flying above an ocean. Short answer: ocean",
+                "Input: Is the shape of the bottle the same as that of the cake? No, the shape of the bottle is not the same as that of the cake. Short answer: no",
+                "Input: What is the girl in front of? The girl is standing in front of a traffic sign. Short answer: traffic sign",
+                "Input: Which side of the image is the beige car on? The beige car is on the left side of the image. Short answer: left",
+                "Input: What is the fruit that is green called? The fruit that is green is peer. Short answer: peer",
+                "Input: Do the sneakers look blue and comfortable? Yes, the sneakers appear to be blue and comfortable. Short answer: yes",
+                "Input: What wears the shoe? A pitcher wears the shoe. Short answer: pitcher",
+                "Input: What do you think hangs above the counter top? A banana hangs above the counter top. Short answer: banana",
+                "Input: On which side is the large microwave? The large microwave is on the left side of the kitchen. Short answer: left"
+            ]
+        }
+    }
+}

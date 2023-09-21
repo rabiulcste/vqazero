@@ -1,0 +1,366 @@
+dataset: okvqa
+subset: basic
+
+templates:
+  cb8a90c9-a40d-4405-a853-1df408f97ab5: !Template
+    id: cb8a90c9-a40d-4405-a853-1df408f97ab5
+    jinja: |
+      {% if caption  %} {{ caption }} {% endif %} Please answer the following question. {{ question }}
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_answer_the_following_question
+    author: Rabiul Awal
+
+  0a85080c-0bc0-44f2-acd2-b1d07669b31c: !Template
+    id: 0a85080c-0bc0-44f2-acd2-b1d07669b31c
+    jinja: |
+      {% if caption  %} {{ caption }} {% endif %} Please answer the following question. {{ question }}
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_answer_the_following_question_knn
+    author: Rabiul Awal
+
+  868c0174-f210-40ac-a09a-2725fed90604: !Template
+    id: 868c0174-f210-40ac-a09a-2725fed90604
+    jinja: '{{ caption }} Please answer the following question about the image. {{ question }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_answer_the_following_question_image
+    author: Rabiul Awal
+
+  4e9c4786-8596-49b5-be6b-d3b89f2fc350: !Template
+    id: 4e9c4786-8596-49b5-be6b-d3b89f2fc350
+    jinja: '{{ caption }} Please answer the following question in short. {{ question }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_answer_the_following_question_in_short
+    author: Rabiul Awal
+
+  ecbce161-0856-4e99-ab1d-efa660bb2f3f: !Template
+    id: ecbce161-0856-4e99-ab1d-efa660bb2f3f
+    jinja: |
+      Your task is to answer knowledge based question. 
+      {{ caption }} {{ question }}
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_your_task_knowledge_qa
+    author: Rabiul Awal
+
+  ef02b0f5-0ea5-4b83-9cad-5569da3f3cb4: !Template
+    id: ef02b0f5-0ea5-4b83-9cad-5569da3f3cb4
+    jinja: |
+      {% if caption  %} {{ caption }} {% endif %} Your task is to answer a knowledge based question. Question: {{ question }} Short answer:
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_your_task_knowledge_qa_short_answer
+  
+  ca0d5917-4507-40a1-8026-4c5e096b3d7b: !Template
+    id: ca0d5917-4507-40a1-8026-4c5e096b3d7b
+    jinja: 'Your task is to answer knowledge based question. Keep it short and precise. {{ caption }} {{ question }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_your_task_knowledge_qa_precise
+    author: Rabiul Awal
+
+  aefb9239-94ea-423f-808a-d7f6ff691a7b: !Template
+    id: aefb9239-94ea-423f-808a-d7f6ff691a7b
+    jinja: 'Your task is to answer knowledge based question. Keep it short and precise. {{ caption }} Question: {{ question }} Short answer:'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_your_task_knowledge_qa_precise_short_answer
+
+  26049f4a-13f1-49cd-9eb9-c3ccb088d512: !Template
+    id: 26049f4a-13f1-49cd-9eb9-c3ccb088d512
+    jinja: 'Your task is to answer knowledge based question. Try to use few words. {{ caption }} {{ question }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_your_task_knowledge_qa_few_words
+    author: Rabiul Awal
+
+  46114e70-bc9e-45c0-8e21-b3f7fb0b139b: !Template
+    id: 46114e70-bc9e-45c0-8e21-b3f7fb0b139b
+    jinja: 'Your task is to answer knowledge based question. Try to use few words. {{ caption }} Question: {{ question }} Short answer:'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_your_task_knowledge_qa_few_words_short_answer
+
+  d6022bde-1d50-4897-9922-9208b3c3f551: !Template
+    id: d6022bde-1d50-4897-9922-9208b3c3f551
+    jinja: '{{ caption }} {{ question }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_null
+    author: Rabiul Awal
+
+  f5b5baf0-07ff-4760-926d-79efb7388780: !Template
+    id: f5b5baf0-07ff-4760-926d-79efb7388780
+    jinja: '{{ caption }} Question: {{ question }} Answer:'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_question_answer
+    author: Rabiul Awal
+
+  99192276-d29e-4970-9a65-221285b6db74: !Template
+    id: 99192276-d29e-4970-9a65-221285b6db74
+    jinja: '{{ caption }} Question: {{ question }} Short answer:'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_question_short_answer
+    author: Rabiul Awal
+
+  2d8c9a0b-1b2a-3c4d-5e6f-7d8c9a0b1b2a: !Template
+    id: 2d8c9a0b-1b2a-3c4d-5e6f-7d8c9a0b1b2a
+    jinja: |
+      Question: In what year was this desert first introduced? Answer: "1847"
+      Question: How fast is the vehicle pictured capable of reaching? Answer: "80 mph"
+      Question: What kind of dog is this? Answer: "beagle"
+      Question: What kind of oven is on the table? Answer: "toaster"
+      Question: Would this article of furniture typically be for public or private use? Answer: "public"
+      {% if add_special_tokens == True %}
+      <image> {{ caption }} Question: {{ question }} Answer:
+      {% else %}      
+      {{ caption }} Question: {{ question }} Answer:
+      {% endif %}
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_exemplars
+    author: Rabiul Awal
+
+  45b5baf0-07ff-4760-926d-79efb7388780: !Template
+    id: 45b5baf0-07ff-4760-926d-79efb7388780
+    jinja: |
+      Your task is to answer the question based on the image that may require outside knowledge.
+      1. Question: In what year was this desert first introduced? Short answer: "1847"
+      2. Question: How fast is the vehicle pictured capable of reaching? Short answer: "80 mph"
+      3. Question: What kind of dog is this? Short answer: "beagle"
+      4. Question: What kind of oven is on the table? Short answer: "toaster"
+      5. Question: Would this article of furniture typically be for public or private use? Short answer: "public"
+      {% if add_special_tokens == True %}
+      <image>6. Question: {{ question }} Answer:
+      {% else %}      
+      6. Question: {{ question }} Answer:
+      {% endif %}
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_instruct_exemplars
+    author: Rabiul Awal
+
+  5b5baf0-07ff-4760-926d-79efb7388780: !Template
+    id: 5b5baf0-07ff-4760-926d-79efb7388780
+    jinja: |
+      Answer the following question by reasoning step-by-step. 
+      Question: {{ question }}
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_instruct_rationale
+    author: Rabiul Awal
+
+  7b4a0110-47af-4e56-b6a7-d5f4d38e9a17: !Template
+    id: 7b4a0110-47af-4e56-b6a7-d5f4d38e9a17
+    jinja: |
+      Answer the following question by reasoning step-by-step. 
+      Question: {{ question }}
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_instruct_rationale_knn
+    author: Rabiul Awal
+  
+  6379cbd5-f3c5-484f-833a-75e33b863b0b: !Template
+    id: 6379cbd5-f3c5-484f-833a-75e33b863b0b
+    jinja: |
+      Q: {{ question }}
+      A: Let's think step by step.
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_think_step_by_step_rationale
+    author: Rabiul Awal
+
+  f40db9db-d375-4049-94ed-63f1fbefdc4a: !Template
+    id: f40db9db-d375-4049-94ed-63f1fbefdc4a
+    jinja: |
+      Q: {{ question }}
+      A: Let's think step by step.
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_think_step_by_step_rationale_knn
+    author: Rabiul Awal
+
+  4a6caad7-c582-44c4-b4bd-d01018fe7b53: !Template
+    id: 4a6caad7-c582-44c4-b4bd-d01018fe7b53
+    jinja: |
+      Q: {{ question }}
+      Give the rationale before answering.
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_rationale_before_answering
+    author: Rabiul Awal
+
+  32cfce80-6ed1-41f8-b79b-c759367b74b8: !Template
+    id: 32cfce80-6ed1-41f8-b79b-c759367b74b8
+    jinja: |
+      Q: {{ question }}
+      Give the rationale before answering.
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_rationale_before_answering_knn
+    author: Rabiul Awal
+
+
+  6b5baf0-07ff-4760-926d-79efb7388780: !Template
+    id: 6b5baf0-07ff-4760-926d-79efb7388780
+    jinja: |
+      Question: In what year was this desert first introduced? Answer: Let's think step-by-step. This is a photo of donut. Donut was first introduced in the year 1847 by Hanson Gregory, an American ship captain. Therefore, the final answer is "1847".
+      Question: What animal does the meat on the pizza come from? Answer: Let's think step-by-step. This is a photo of a large pepperoni pizza on a wooden cutting board. The meat on the pizza comes from pork, which is obtained from the domestic pig. Therefore, the final answer is "pig".
+      Question: How tall is this animal usually? Answer: Let's think step-by-step. This is a photo of two giraffes standing next to each other in a zoo enclosure. Giraffes can reach a height of upto 20 feet. Therefore, the final answer is "20 feet".
+      Question: What kind of dog is this? Answer: Let's think step-by-step. This is a photo of a beagle dog laying on the beach. Beagles are a breed of small to medium-sized hound dogs that are commonly recognized by their floppy ears and white, brown, and black coat. Therefore, the final answer is "beagle".
+      Your task is to answer knowledge based question. Now, please answer the following question about the image by reasoning step-by-step.
+      {% if add_special_tokens == True %}
+      <image>Question: {{ question }} Answer:
+      {% else %}      
+      Question: {{ question }} Answer:
+      {% endif %}
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_instruct_rationale_exemplars
+    author: Rabiul Awal
+
+
+  t6b5baf0-07ff-4760-926d-79efb7388780: !Template
+    id: t6b5baf0-07ff-4760-926d-79efb7388780
+    jinja: |
+      Question: In what year was this desert first introduced? Answer: Let's think step-by-step. This is a photo of donut. Donut was first introduced in the year 1847 by Hanson Gregory, an American ship captain. Therefore, the final answer is "1847".
+      Question: What animal does the meat on the pizza come from? Answer: Let's think step-by-step. This is a photo of a large pepperoni pizza on a wooden cutting board. The meat on the pizza comes from pork, which is obtained from the domestic pig. Therefore, the final answer is "pig".
+      Question: How tall is this animal usually? Answer: Let's think step-by-step. This is a photo of two giraffes standing next to each other in a zoo enclosure. Giraffes can reach a height of upto 20 feet. Therefore, the final answer is "20 feet".
+      Question: What kind of dog is this? Answer: Let's think step-by-step. This is a photo of a beagle dog laying on the beach. Beagles are a breed of small to medium-sized hound dogs that are commonly recognized by their floppy ears and white, brown, and black coat. Therefore, the final answer is "beagle".
+      Question: Is this at a salt water beach or a lake? Answer: Let's think step-by-step. This is at a salt water beach. Therefore, the final answer is "salt water beach".
+      Question: What animal is this boat mimicing? Answer: Let's think step-by-step. This boat is mimicing a duck. Therefore, the final answer is "duck".
+      Now, please answer the following question about the given image by reasoning step-by-step.
+      {% if add_special_tokens == True %}
+      <image>Question: {{ question }} Answer:
+      {% else %}      
+      Question: {{ question }} Answer:
+      {% endif %}
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_instruct_rationale_exemplars_v2
+    author: Rabiul Awal
+
+
+  7b5baf0-07ff-4760-926d-79efb7388780: !Template
+    id: 7b5baf0-07ff-4760-926d-79efb7388780
+    jinja: |
+      Question: In what year was this desert first introduced? Answer: Let's think step-by-step. This is a photo of donut. Donut was first introduced in the year 1847 by Hanson Gregory, an American ship captain. Therefore, the final answer is "1847".
+      Question: What animal does the meat on the pizza come from? Answer: Let's think step-by-step. This is a photo of a large pepperoni pizza on a wooden cutting board. The meat on the pizza comes from pork, which is obtained from the domestic pig. Therefore, the final answer is "pig".
+      Question: How tall is this animal usually? Answer: Let's think step-by-step. This is a photo of two giraffes standing next to each other in a zoo enclosure. Giraffes can reach a height of upto 20 feet. Therefore, the final answer is "20 feet".
+      Question: What kind of dog is this? Answer: Let's think step-by-step. This is a photo of a beagle dog laying on the beach. Beagles are a breed of small to medium-sized hound dogs that are commonly recognized by their floppy ears and white, brown, and black coat. Therefore, the final answer is "beagle".
+      Now, please answer the following question about the given image by reasoning step-by-step.
+      {% if add_special_tokens == True %}
+      <image>Question: {{ question }} Answer:
+      {% else %}      
+      Question: {{ question }} Answer:
+      {% endif %}
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_instruct_rationale_exemplars_v3
+    author: Rabiul Awal
+
+
+  8b5baf0-07ff-4760-926d-79efb7388780: !Template
+    id: 8b5baf0-07ff-4760-926d-79efb7388780
+    jinja: |
+      Question: In what year was this desert first introduced? Answer: Let's think step-by-step. This is a photo of donut. Donut was first introduced in the year 1847 by Hanson Gregory, an American ship captain. Therefore, the final answer is "1847".
+      Question: What animal does the meat on the pizza come from? Answer: Let's think step-by-step. This is a photo of a large pepperoni pizza on a wooden cutting board. The meat on the pizza comes from pork, which is obtained from the domestic pig. Therefore, the final answer is "pig".
+      Question: How tall is this animal usually? Answer: Let's think step-by-step. This is a photo of two giraffes standing next to each other in a zoo enclosure. Giraffes can reach a height of upto 20 feet. Therefore, the final answer is "20 feet".
+      Question: What kind of dog is this? Answer: Let's think step-by-step. This is a photo of a beagle dog laying on the beach. Beagles are a breed of small to medium-sized hound dogs that are commonly recognized by their floppy ears and white, brown, and black coat. Therefore, the final answer is "beagle".
+      {% if add_special_tokens == True %}
+      <image>Question: {{ question }} Answer:
+      {% else %}      
+      Question: {{ question }} Answer:
+      {% endif %}
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_rationale_exemplars
+    author: Rabiul Awal
+
+      
+  921d7b08-02cb-4f79-8f5b-7a026a32f925: !Template
+    id: 921d7b08-02cb-4f79-8f5b-7a026a32f925
+    jinja: |
+      Question: In what year was this dessert first introduced?
+      Answer: The short answer is "1847" because donuts were first introduced in 1847 year by an American ship captain named Hanson Gregory. This is a photo of a donut.
+
+      Question: What animal does the meat on the pizza come from?
+      Answer: The short answer is "pig" because pork is the meat commonly used on pizzas and it comes from domestic pigs. This is a photo of a large pepperoni pizza on a wooden cutting board.
+
+      Question: How tall is this animal usually?
+      Answer: The short answer is "20 feet" because giraffes can grow up to that height. This is a photo of two giraffes standing next to each other in a zoo enclosure.
+
+      Question: What kind of dog is this?
+      Answer: The short answer is "beagle" because the photo shows a beagle dog, a small to medium-sized breed of hound dogs that are known for their floppy ears and tricolor coat. This is a photo of a beagle dog laying on the beach.
+
+      {% if add_special_tokens == True %}
+      <image>Question: {{ question }} Answer:
+      {% else %}      
+      Question: {{ question }} Answer:
+      {% endif %}
+    metadata:
+      choices_in_prompt: false
+    name: prefix_rationale_because_exemplars
+    author: Rabiul Awal
+
+  eaf6798a-d3e3-48f1-a711-72eb8dc2c0ab: !Template    
+    id: eaf6798a-d3e3-48f1-a711-72eb8dc2c0ab
+    jinja: |
+      In this task, you will write the correct answer to the question about the image. 
+      Please provide rationale behind your answer.
+      {{ question }}
+    metadata:
+      choices_in_prompt: false
+    name: prefix_rationale_behind_answer
+    author: Rabiul Awal
+
+
+  d1d02aac-0a98-44e2-9c36-cb1452f84fdb: !Template
+    id: d1d02aac-0a98-44e2-9c36-cb1452f84fdb
+    jinja: |
+      {{ caption }} Question: {{ question }} Answer: 
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_question_answer_knn
+    author: Rabiul Awal
+
+  c31170e8-f5ee-4bb2-95d0-07f17815a3f9: !Template
+    id: c31170e8-f5ee-4bb2-95d0-07f17815a3f9
+    jinja: |
+      {{ caption }} Question: {{ question }} Short answer: 
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_question_short_answer_knn
+    author: Rabiul Awal
+
+  1d02aac-0a98-44e2-9c36-cb1452f84fdb: !Template
+    id: 1d02aac-0a98-44e2-9c36-cb1452f84fdb
+    jinja: |
+      {% if caption  %} {{ caption }} {% endif %} Your task is to answer a knowledge based question. Question: {{ question }} Short answer:
+    
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_your_task_knowledge_qa_short_answer_knn
+    author: Rabiul Awal
+
+  aac913af-4369-488a-8ea4-a905068cb755: !Template
+    id: aac913af-4369-488a-8ea4-a905068cb755
+    jinja: |
+        {% if caption  %} {{ caption }} {% endif %} Your task is to answer a knowledge based question. Question: {{ question }} {% if choice %} {{ choice }} {% endif %} Answer:
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_your_task_knowledge_qa_answer
+
+
+  fc517819-c03a-45f3-8987-acd9626e921f: !Template
+    id: fc517819-c03a-45f3-8987-acd9626e921f
+    jinja: |
+        {% if caption  %} {{ caption }} {% endif %} Your task is to answer a knowledge based question. Question: {{ question }} {% if choice %} {{ choice }} {% endif %} Answer:
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_your_task_knowledge_qa_answer_knn
