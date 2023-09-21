@@ -1,78 +1,42 @@
 import json
 import os
 import time
-import time
-from string import punctuation
-from typing import List, Union
-from typing import List, Union
+from typing import List
+import re
 
-import spacy
 import torch
-from promptcap import PromptCap
-from torch.utils.data import DataLoader
+from dataset_zoo.custom_dataset import VQADataset, collate_fn
 from promptcap import PromptCap
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformers import AutoProcessor, Blip2ForConditionalGeneration
-
-from dataset_zoo.custom_dataset import VQADataset, collate_fn
-from dataset_zoo.custom_dataset import VQADataset, collate_fn
-from modeling_utils import (apply_prompt_to_example_winoground,
-                            get_image_tensors_winoground,
-                            get_optimal_batch_size, get_optimal_batch_size_v2,
-                            load_model_and_processors)
-from utils.config import PROJECT_DIR
+from utils.config import OUTPUT_DIR
 from utils.globals import MODEL_CLS_INFO
-                            get_image_tensors_winoground,
-                            get_optimal_batch_size, get_optimal_batch_size_v2,
-                            load_model_and_processors)
-from transformers import AutoProcessor, Blip2ForConditionalGeneration
-from utils.globals import MODEL_CLS_INFO
-from utils.config import PROJECT_DIR
 from utils.handler import PromptingHandler
 from utils.logger import Logger
 
+from vqa_zero.inference_utils import (apply_prompt_to_example_winoground,
+                            get_image_tensors_winoground,
+                            load_model_and_processors)
+
 logger = Logger(__name__)
 
+N = 5  # number of days to keep the cached caption data
 
 
-nlp = spacy.load("en_core_web_sm")
+class CaptionGenerator:
+    """
+    This class is used to generate captions for the images in the VQA dataset.
+    """
 
-# This class exclusively loads cached caption data, primarily designed for use with the
-# inference_vqa.py script. The script assumes that captions have already been generated and saved
-# in a file. To generate captions, please refer to the caption_generator.py and pipeliner.py scripts.
-N = 5  # number of days
-split_map = {
-    "train": "train",
-    "val": "",
-    "testdev": "testdev",
-}
-
-class CaptionPrefixHandler:
-    def __init__(self, args, device="cuda"):
     def __init__(self, args, device="cuda"):
         self.args = args
         self.data = None  # caption data
         self.device = device
 
-    def generate_caption_to_use_as_prompt_prefix(self, prompt_handler: PromptingHandler, split="val"):
-        self.args.split = split
-        if os.path.exists(self.get_file_path()):
-            file_mod_time = os.path.getmtime(self.get_file_path())
-            current_time = time.time()
-            two_days_in_seconds = N * 24 * 60 * 60
-            if current_time - file_mod_time < two_days_in_seconds:
-                logger.info(f"Caption data already exists. You can load it from cache {self.get_file_path()}")
-                return
-    def generate_caption_to_use_as_prompt_prefix(self, prompt_handler: PromptingHandler, split="val"):
-        # if not self.args.overwrite_output_dir and os.path.exists(self.get_file_path(split)):
+    def generate_caption(self, prompt_handler: PromptingHandler, split="val"):
         if os.path.exists(self.get_file_path(split)):
-            file_mod_time = os.path.getmtime(self.get_file_path(split))
-            current_time = time.time()
-            two_days_in_seconds = N * 24 * 60 * 60
-            if current_time - file_mod_time < two_days_in_seconds:
-                logger.info(f"Caption data already exists. You can load it from cache {self.get_file_path(split)}")
-                return
+            logger.info(f"Caption data already exists. You can load it from cache {self.get_file_path(split)}")
 
         model_name = MODEL_CLS_INFO["hfformer"][self.args.gen_model_name]["name"]
         self.processor = AutoProcessor.from_pretrained(model_name)
@@ -80,12 +44,12 @@ class CaptionPrefixHandler:
             model_name, torch_dtype=torch.bfloat16, device_map="auto"
         )
 
-        batch_size = get_optimal_batch_size(self.args)
+        batch_size = 32  # hardcoded for now
         dataset_args = {
             "config": self.args,
             "dataset_name": self.args.dataset_name,
             # "processor": self.processor,
-            "prompt_handler": prompt_handler,
+            # "prompt_handler": prompt_handler,
             "model_name": self.args.gen_model_name,
             "split": split,
         }
@@ -109,47 +73,41 @@ class CaptionPrefixHandler:
         logger.info(f" Num iterations: \t{len(dataset) // batch_size}")
 
         output = {}
-        for batch in tqdm((dataloader), desc="Generating captions"):
+        for batch in tqdm(dataloader, desc="Generating captions"):
             images = batch["images"]
             questions = batch["questions"]
             answers = batch["answers"]
-            prompt = self.get_prompt_str_for_prefix_caption(prompt_handler, questions)  # prefix for caption
-            # print(prompt)
-            inputs = self.processor(images=images, text=prompt, padding=True, return_tensors="pt").to(
+            prompts = self.get_prompt_str_for_prefix_caption(prompt_handler, questions)  # prefix for caption
+            inputs = self.processor(images=images, text=prompts, padding=True, return_tensors="pt").to(
                 self.device, torch.bfloat16
             )
             generated_ids = self.model.generate(
                 **inputs,
                 max_new_tokens=100,
-                num_beams=5,
-                # num_beam_groups=5,
-                # do_sample=True,
+                num_beams=3,
                 num_return_sequences=1,
-                # top_p=0.9,
-                # top_k=50,
-                # temperature=0.7,
-                # length_penalty=2.0,
-                # no_repeat_ngram_size=3,
+                no_repeat_ngram_size=3,
             )
             generated_captions = self.processor.batch_decode(generated_ids, skip_special_tokens=True)
-
+            generated_captions = [re.sub(r'^\s+|\s+$', '', caption) for caption in generated_captions]
             if len(generated_captions) != len(questions):
                 new_list = []
                 for i in range(0, len(generated_captions), 3):
                     current_caption_list = generated_captions[i : i + 3]
-                    print(current_caption_list)
+                    logger.info(current_caption_list)
                     # take the maximum length caption
                     current_caption = max(current_caption_list, key=len)
                     new_list.append(current_caption)
                 generated_captions = new_list
 
             # these are fixed streps for all caption generation
-            if prompt_handler.prompt_name.startswith("prefix_"):
+            if prompt_handler.prompt_name == "prefix_a_photo_of":
                 generated_captions = [f"A photo of {gen_caption}." for gen_caption in generated_captions]
-            else:
-                generated_captions = [
-                    prompt_handler.generic_prompting_handler_for_vqa({"caption": ex}) for ex in generated_captions
-                ]
+            # else:
+            #     generated_captions = [
+            #         prompt_handler.generic_prompting_handler_for_vqa({"caption": ex}) for ex in generated_captions
+            #     ]
+
             if len(generated_captions) != len(questions):
                 new_list = []
                 for i in range(0, len(generated_captions), 3):
@@ -158,10 +116,10 @@ class CaptionPrefixHandler:
             assert len(generated_captions) == len(questions)
 
             for question_id, caption in zip(batch["question_ids"], generated_captions):
-                output[question_id] = caption.strip().replace("\n", "")
+                output[question_id] = caption.replace("\n", "").strip()
 
             for question, caption, answer in zip(questions, generated_captions, answers):
-                print(f"Question: {question} | Caption: {caption} | Answer: {answer}")
+                logger.info(f"Question = {question}, Caption = {caption}, Answer = {answer}")
 
         self.save(output, split)
 
@@ -248,28 +206,6 @@ class CaptionPrefixHandler:
             )
         return generated_captions
 
-    def load(self, split: str):
-        fname = self.get_file_path(split)
-        if not os.path.exists(fname):
-            raise FileNotFoundError(
-                f"File {fname} does not exist. Please generate the prompted captions first.\n"
-                f"python caption_generator.py --dataset_name {self.args.dataset_name} "
-                f"--model_name {self.args.model_name} --vqa_format caption_qa "
-                f"--prompt_name {self.args.prompt_name}"
-            )
-        print(f"Loading prompted captions from {fname}")
-        with open(fname, "r") as f:
-            prompted_captions = json.load(f)
-        logger.info(f"Loaded prompted captions from {fname}")
-        self.data = prompted_captions
-
-    def load_by_ids(self, ids: Union[str, List[str]]):
-        if isinstance(ids, str):
-            prompted_captions_batch = self.data[str(ids)]  # handling winoground case
-        else:
-            prompted_captions_batch = [self.data[str(idx)] for idx in ids]
-        return prompted_captions_batch
-
     def save(self, output_captions, split):
         fname = self.get_file_path(split)
         with open(fname, "w") as f:
@@ -277,7 +213,7 @@ class CaptionPrefixHandler:
 
         logger.info(f"Saved generated captions to {fname}")
 
-    def get_dir_path(self, split) -> str:
+    def get_file_path(self, split) -> str:
         required_args = [self.args.dataset_name, self.args.gen_model_name, self.args.vqa_format, self.args.prompt_name]
         if any(val is None for val in required_args):
             raise ValueError(
@@ -286,11 +222,10 @@ class CaptionPrefixHandler:
             )
         subdir_prefix = self.args.prompt_name.split(",")[1]
         # TODO: design a better way to handle this
-        split = split_map[split]
         dir_path = os.path.join(
-            PROJECT_DIR,
-            "output",
-            "generated_caption_dumps" if "decompose" not in self.args.prompt_name else "decomposed_dumps",
+            OUTPUT_DIR,
+            "cache",
+            "generated_caption_dumps",
             self.args.dataset_name,
             self.args.gen_model_name,  # "git_large_textcaps",
             self.args.vqa_format,
@@ -298,11 +233,6 @@ class CaptionPrefixHandler:
             split,
         )
         os.makedirs(dir_path, exist_ok=True)
-
-        return dir_path
-
-    def get_file_path(self, split) -> str:
-        dir_path = self.get_dir_path(split)
         file_path = os.path.join(dir_path, f"output.json")
         return file_path
 
@@ -323,7 +253,7 @@ class CaptionPrefixHandler:
         return prompt_txt
 
 
-class CaptionPrefixHandlerWinoground(CaptionPrefixHandler):
+class CaptionPrefixHandlerWinoground(CaptionGenerator):
     NUM_IMAGES = 2
 
     def batchify_winoground(self, winoground_example):
@@ -333,13 +263,14 @@ class CaptionPrefixHandlerWinoground(CaptionPrefixHandler):
         batch["question_ids"] = winoground_example["id"]
         return batch
 
-    def generate_caption_to_use_as_prompt_prefix(self, dataloader, prompt_handler: PromptingHandler):
-        if os.path.exists(self.get_file_path()):
-            file_mod_time = os.path.getmtime(self.get_file_path())
+    def generate_caption(self, dataloader, prompt_handler: PromptingHandler):
+        fname = self.get_file_path()
+        if os.path.exists(fname):
+            file_mod_time = os.path.getmtime(fname)
             current_time = time.time()
             two_days_in_seconds = N * 24 * 60 * 60
             if current_time - file_mod_time < two_days_in_seconds:
-                logger.info(f"Caption data already exists. You can load it from cache {self.get_file_path()}")
+                logger.info(f"Caption data already exists. You can load it from cache {fname}")
                 return
 
         self.model, self.processor = load_model_and_processors(self.args.model_name, self.args.device)
@@ -359,8 +290,6 @@ class CaptionPrefixHandlerWinoground(CaptionPrefixHandler):
             else:
                 generated_captions = self.generate_standard(image_tensors, caption_texts, prompt_handler)
 
-            # print(generated_captions)
-
             if prompt_handler.prompt_name.startswith("prefix_"):
                 generated_captions = [f"A photo of {gen_caption}." for gen_caption in generated_captions]
             else:
@@ -368,7 +297,7 @@ class CaptionPrefixHandlerWinoground(CaptionPrefixHandler):
                 generated_captions = apply_prompt_to_example_winoground(prompt_handler, caption_example)
 
             output[example["id"]] = generated_captions
-        self.save(output, split)
+        self.save(output, split="val")
 
     def generate_standard(self, image_tensors, questions: List[str], prompt_handler: PromptingHandler):
         prompt_txt = self.get_prompt_str_for_prefix_caption(prompt_handler, questions)  # prefix for caption
@@ -391,18 +320,21 @@ class CaptionPrefixHandlerWinoground(CaptionPrefixHandler):
         return generated_captions
 
 
-class PromptcapPrefixHandler(CaptionPrefixHandler):
+class PromptCapGenerarator(CaptionGenerator):
     def __init__(self, args, device="cuda"):
-        model = PromptCap("vqascore/promptcap-coco-vqa")  # Load the PromptCap model
-        if device == "cuda":
-            model.cuda()  # Move the model to the GPU if 'cuda' is specified as the device
         self.args = args
-        self.model = model
+        self.device = device
 
-    def generate_caption_to_use_as_prompt_prefix(self, prompt_handler: PromptingHandler, split):
+    def _load_model(self, device):
+        self.promptcap = PromptCap("vqascore/promptcap-coco-vqa")  # Load the PromptCap model
+        self.promptcap.model.to(device)
+
+    def generate_caption(self, prompt_handler: PromptingHandler, split):
         if os.path.exists(self.get_file_path(split)):
             logger.info(f"Caption data already exists. You can load it from cache {self.get_file_path(split)}")
             return
+        
+        self._load_model(self.device)
 
         batch_size = 32  # hardcoded for now
         dataset_args = {
@@ -430,14 +362,13 @@ class PromptcapPrefixHandler(CaptionPrefixHandler):
 
         output = {}
         for batch in tqdm((dataloader), desc="Generating captions"):
-            image_paths = batch["image_paths"]
             images = batch["images"]
             questions = batch["questions"]
 
             prompted_questions = [
                 f"Please describe this image according to the given question: {question}" for question in questions
             ]
-            generated_captions = self.model.caption_batch(prompted_questions, images)
+            generated_captions = self.promptcap.caption_batch(prompted_questions, images)
 
             # these are fixed streps for all caption generation
             if prompt_handler.prompt_name.startswith("prefix_"):
@@ -454,10 +385,6 @@ class PromptcapPrefixHandler(CaptionPrefixHandler):
 
         self.save(output, split)
 
-    # def generate_standard(self, images, questions: List[str]):
-    #     prompts = [f"please describe this image according to the given question: {question}" for question in questions]
-    #     return self.model.caption_batch(prompts, images)
-
     def generate_standard(self, images, questions):
         generated_captions = []
         for image, question in zip(images, questions):
@@ -465,43 +392,3 @@ class PromptcapPrefixHandler(CaptionPrefixHandler):
             output = self.model.caption(prompt, image)
             generated_captions.append(output)
         return generated_captions
-
-
-class BreakDownQuestion(CaptionPrefixHandler):
-    def __init__(self, args, device="cuda"):
-        self.args = args
-
-    def decompse_question(self, dataloader):
-        import torch
-        from transformers import AutoTokenizer, T5ForConditionalGeneration
-
-        model = T5ForConditionalGeneration.from_pretrained(
-            "google/flan-ul2", torch_dtype=torch.bfloat16, device_map="auto"
-        )
-        tokenizer = AutoTokenizer.from_pretrained("google/flan-ul2")
-
-        output = {}
-        for batch in tqdm((dataloader), desc="Generating decomposed steps"):
-            prompted_questions = []
-            for question in batch["questions"]:
-                curr_prompted_question = (
-                    "To answer this question in an image, what are the steps? You can assume that one will always look at the image first. "
-                    "Question: What breed this dog is? "
-                    "Step1: Identify dog's characteristics. Step2: Check how large or small they are. Step3: Identify the type. "
-                    "Question: What could this gentleman be carrying in that red bag? "
-                    "Step1: Look at the bag. Step2: Look at the gentleman. Step3: Make a guess. "
-                    f"Question: {question} "
-                    "Now, show me the steps to answer this question (maximum 3)."
-                )
-                prompted_questions.append(curr_prompted_question)
-
-            # print(question)
-            inputs = tokenizer(prompted_questions, return_tensors="pt", padding=True).input_ids.to("cuda")
-            generated_steps = model.generate(
-                inputs, max_length=200, num_beams=5, repetition_penalty=2.5, early_stopping=True
-            )
-
-            for question_id, caption in zip(batch["question_ids"], generated_steps):
-                output[question_id] = caption
-
-        self.save(output)

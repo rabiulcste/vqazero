@@ -6,18 +6,14 @@ import torch
 from datasets import load_dataset
 from tqdm import tqdm
 
-from utils.logger import Logger
-from utils.prompt_engineering import (
-    DecomposeGeneratorForWinoground,
-    QuestionGeneratorforWinoground,
-    CaptionGeneratorforWinoground,
-)
-from utils.handler import PromptingHandler
 from utils.globals import MODEL_CLS_INFO
+from utils.handler import PromptingHandler
+from utils.logger import Logger
+from utils.prompt_engineering import (CaptionGeneratorforWinoground,
+                                      DecomposeGeneratorForWinoground,
+                                      QuestionGeneratorforWinoground)
 
-VALID_MODELS = list(MODEL_CLS_INFO["lavis"].keys()) + list(
-    MODEL_CLS_INFO["hfformer"].keys()
-)
+VALID_MODELS = list(MODEL_CLS_INFO["lavis"].keys()) + list(MODEL_CLS_INFO["hfformer"].keys())
 
 logger = Logger(__name__)
 
@@ -35,16 +31,12 @@ def generate_questions_for_winoground_dataset(args):
     # setup prompt
     prompt_name = args.prompt_name
 
-    handler = PromptingHandler(
-        args.dataset_name, prompt_name, subset_name="api_question"
-    )
+    handler = PromptingHandler(args.dataset_name, prompt_name, subset_name="api_question")
     template_expr = handler.prompt.jinja if handler.prompt else ""
     logger.info(f"PROMPT TEMPLATE: {template_expr}")
 
     # Generate questions for Winogrande dataset and save output to "output_dir"
-    winoground = load_dataset("facebook/winoground", use_auth_token=True)[
-        "test"
-    ]  # winoground-dataset
+    winoground = load_dataset("facebook/winoground", use_auth_token=True)["test"]  # winoground-dataset
 
     output_dir = f"output/gpt3-api/generated-questions/{prompt_name}"
     logger.info(f"Output directory is set to {output_dir}")
@@ -54,9 +46,7 @@ def generate_questions_for_winoground_dataset(args):
 
     # access the generated questions
     example_id = np.random.randint(len(winoground))
-    generated_questions = qgen.get_generated_questions_for_winoground(
-        example_id, output_dir
-    )
+    generated_questions = qgen.get_generated_questions_for_winoground(example_id, output_dir)
 
     # print the generated questions for the first example in the dataset
     example_id = generated_questions["id"]
@@ -81,16 +71,12 @@ def generate_subquestions_for_winoground_dataset(args):
     # setup prompt
     prompt_name = args.prompt_name
 
-    handler = PromptingHandler(
-        args.dataset_name, prompt_name, subset_name="api_decomposition"
-    )
+    handler = PromptingHandler(args.dataset_name, prompt_name, subset_name="api_decomposition")
     template_expr = handler.prompt.jinja if handler.prompt else ""
     logger.info(f"PROMPT TEMPLATE: {template_expr}")
 
     # Generate questions for Winogrande dataset and save output to "output_dir"
-    winoground_dataset = load_dataset("facebook/winoground", use_auth_token=True)[
-        "test"
-    ]  # winoground-dataset
+    winoground_dataset = load_dataset("facebook/winoground", use_auth_token=True)["test"]  # winoground-dataset
 
     decompose_gen.generate_decomposed_subquestions(winoground_dataset, handler)
     decompose_gen.print_sample_generated_questions(prompt_name)
@@ -190,7 +176,7 @@ if __name__ == "__main__":
             "generate_captions",
             "generate_subquestions",
             "generate_rationale",
-            "generate_eval"
+            "generate_eval",
         ],
     )
 
@@ -204,13 +190,9 @@ if __name__ == "__main__":
     elif args.function == "generate_subquestions":
         generate_subquestions_for_winoground_dataset(args)
     elif args.function == "generate_rationale":
-        logger.warning(
-            f'"args.decompositon_type" is set to {args.decomposition_type}.'
-        )
+        logger.warning(f'"args.decompositon_type" is set to {args.decomposition_type}.')
         generate_rationale_for_winoground_dataset(args)
     elif args.function == "generate_eval":
         generate_eval_for_winoground_dataset(args)
     else:
-        raise NotImplementedError(
-            "Funtion not implemented yet but provided in args {args.function}"
-        )
+        raise NotImplementedError("Funtion not implemented yet but provided in args {args.function}")

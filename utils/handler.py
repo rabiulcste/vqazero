@@ -1,5 +1,6 @@
-import os
 import json
+import os
+
 from prompts.templates import DatasetTemplates
 
 
@@ -98,18 +99,14 @@ class DecompositionHandler:
         self.dataset_name = dataset_name
         self.prompt_name = prompt_name
         self.gen_model_name = gen_model_name
-        self.gpt3_response_dir = os.path.join(
-            "output", self.dataset_name, "gpt3-api", "generated-subquestions"
-        )
+        self.gpt3_response_dir = os.path.join("output", self.dataset_name, "gpt3-api", "generated-subquestions")
         self.data = self.load_subquestions_output_json()
 
     def get_gpt3_converted_question(self, example, handler: PromptingHandler):
         questions = handler.gpt3_baseline_qa_prompting_handler_for_winoground(example)
         return questions
 
-    def get_cot_prompt(
-        self, example_id: int, caption_id: int, decomposed_questions, handler: PromptingHandler
-    ):
+    def get_cot_prompt(self, example_id: int, caption_id: int, decomposed_questions, handler: PromptingHandler):
         cot_prompt = "You are given an image. Answer the following yes/no question about the image:\n"
         # now we need the question.
         # we can get the question from the prompt
@@ -117,7 +114,9 @@ class DecompositionHandler:
         questions = self.get_gpt3_converted_question(example, handler)
 
         cot_prompt += f"{questions[caption_id]}\n"  # only this question is different in the whole prompt
-        to_answer_txt = "To answer the above question, we will first answer the following sub-questions one-by-one in the image:"
+        to_answer_txt = (
+            "To answer the above question, we will first answer the following sub-questions one-by-one in the image:"
+        )
         cot_prompt += to_answer_txt + "\n"
         for subquestion in decomposed_questions:
             cot_prompt += f"{subquestion}\n"

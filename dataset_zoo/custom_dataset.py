@@ -1,21 +1,20 @@
 import json
 import os
 import random
-import unittest
 from collections import defaultdict
 from string import punctuation
-from typing import Dict, List
+from typing import Dict, List, Union
 
 import torch
 from PIL import Image
 from torch.utils.data import Dataset
 from tqdm import tqdm
 
-from carets.carets.dataset import CaretsDataset
-from modeling_utils import get_most_common_item
-from nearest_neighbor import KNNHandler
-from utils.config import SCRATCH_DIR
-from utils.globals import DATASET_CONFIG
+from dataset_zoo.common import get_vqa_dataset
+from utils.config import OUTPUT_DIR, VQA_DATASET_DIR
+from utils.logger import Logger
+
+logger = Logger(__name__)
 
 random.seed(42)
 
@@ -25,207 +24,32 @@ class VQADataset(Dataset):
         self.config = config
         self.split = split
         self.dataset_name = dataset_name
-        self.dataset = self.get_dataset()
+        self.dataset = get_vqa_dataset(dataset_name, split, config.task_type == "multiple_choice")
         self.processor = processor
         self.prompt_handler = prompt_handler
         self.model_name = kwargs.get("model_name")
-        self.caption_gen_cls = kwargs.get("caption_gen_cls")
-        self.cot_gen_cls = kwargs.get("cot_gen_cls")
 
-        if self.caption_gen_cls:
-            print(f"Provided caption_gen_cls: {self.caption_gen_cls}\n" f"Loading cached caption from disk...")
-            self.caption_gen_cls.load(self.split)
+        self.additional_context_data = {}
+        if prompt_handler is not None and self.config.vqa_format in [
+            "caption_vqa",
+            "cot_vqa",
+        ]:  # prompt_handler tell us whether it is for vqa inference or caching the context data
+            self.additional_context_data = self.load_cached_context_data(split)
 
-        elif self.cot_gen_cls:
-            print(f"Provided cot_gen_cls: {self.cot_gen_cls}")
-            print("Loading cached cot from disk...")
-            self.cot_gen_cls.load(self.split)
+        self.in_context_provider = None
+        if "knn" in self.config.prompt_name:
+            self.in_context_provider = IncontextExamplesProvider(self.config)
 
-        self.knn_handler = None
-        if self.prompt_handler and "knn" in self.prompt_handler.prompt_name:
-            self.knn_handler = KNNHandler(config)
-
-        elif self.cot_gen_cls:
-            print(f"Provided cot_gen_cls: {self.cot_gen_cls}")
-            print("Loading cached cot from disk...")
-            self.cot_gen_cls.load()
-
-        self.knn_handler = None
-        if self.prompt_handler and "knn" in self.prompt_handler.prompt_name:
-            self.knn_handler = KNNHandler(config)
-
-    def get_dataset(self):
-        if self.dataset_name == "aokvqa":
-            dataset = self.load_aokvqa_dataset_from_json()
-        elif self.dataset_name == "visual7w":
-            dataset = self.load_visual7w_dataset_from_json()
-        elif self.dataset_name in ["vqa_v2", "okvqa"]:
-            dataset = self.load_vqa_dataset_from_json()
-        elif self.dataset_name == "carets":
-            dataset = CaretsDataset("./carets/configs/default.yml").splits[self.split].questions
-        elif self.dataset_name == "gqa":
-            dataset = self.load_gqa_dataset_from_json()
-        else:
-            raise NotImplementedError(f"Dataset {self.dataset_name} is not implemented yet.")
-
-        return dataset
-
-    def load_vqa_dataset_from_json(self) -> List[Dict]:
-        dataset_dir = os.path.join(SCRATCH_DIR, "datasets")
-        question_file = DATASET_CONFIG[self.dataset_name][self.split]["question_file"]
-        annotation_file = DATASET_CONFIG[self.dataset_name][self.split]["annotation_file"]
-        image_dir = DATASET_CONFIG[self.dataset_name][self.split]["image_root"]
-        coco_prefix = DATASET_CONFIG[self.dataset_name][self.split]["image_prefix"]
-
-        question_data_fpath = os.path.join(dataset_dir, self.dataset_name, question_file)
-        annotation_data_fpath = os.path.join(dataset_dir, self.dataset_name, annotation_file)
-        image_root = os.path.join(dataset_dir, "coco_images", image_dir)
-
-        # vqa v2 chunked dataset
-        if self.config.chunk_id is not None:
-            chunked_question_ids_fpath = os.path.join(dataset_dir, self.dataset_name, "chunked_question_ids.json")
-            with open(chunked_question_ids_fpath) as f:
-                chunked_data = json.load(f)
-            chunked_question_ids = chunked_data[self.config.chunk_id]
-
-        with open(question_data_fpath) as f:
-            question_data = json.load(f)
-
-        with open(annotation_data_fpath) as f:
-            answer_data = json.load(f)
-            answer_data = answer_data["annotations"]
-
-        answer_data_dict = {}
-        for answer_obj in answer_data:
-            question_id = answer_obj["question_id"]
-            answer_data_dict[question_id] = answer_obj
-
-        dataset = []
-        for qa_obj in tqdm(question_data["questions"], desc=f"Preprocessing {self.dataset_name} dataset"):
-            image_id = qa_obj["image_id"]
-            question_id = qa_obj["question_id"]
-            if self.dataset_name == "vqa_v2" and self.config.chunk_id is not None and self.split != "train":
-                if question_id not in chunked_question_ids:
-                    continue
-            image_path = os.path.join(image_root, coco_prefix + "{:012d}".format(image_id) + ".jpg")
-            qa_obj.update({"image_path": image_path})  # adding image path to the question object
-
-            # adding answer to the question object
-            answer_data = answer_data_dict[question_id]
-            qa_obj.update(answer_data)
-            dataset.append(qa_obj)
-        if self.split == "train":
-            random.shuffle(dataset)
-            dataset = dataset[:10000]
-        print(json.dumps(dataset[0], indent=4))
-        return dataset
-
-    def load_gqa_dataset_from_json(self) -> List[Dict]:
-        dataset_dir = os.path.join(SCRATCH_DIR, "datasets")
-        annotation_file = DATASET_CONFIG[self.dataset_name][self.split]["annotation_file"]
-        image_dir = DATASET_CONFIG[self.dataset_name][self.split]["image_root"]
-
-        annotation_data_fpath = os.path.join(dataset_dir, self.dataset_name, annotation_file)
-        image_root = os.path.join(dataset_dir, self.dataset_name, image_dir)
-
-        with open(annotation_data_fpath) as f:
-            annotated_data = json.load(f)
-
-        dataset = []
-        for idx in annotated_data:
-            qa_obj = annotated_data[idx]
-            imageId = qa_obj["imageId"]
-            question = qa_obj["question"]
-            answer = qa_obj["answer"]
-            image_path = os.path.join(image_root, imageId + ".jpg")
-            data = {
-                "image_path": image_path,
-                "question": question,
-                "answer": answer,
-                "question_id": idx,
-            }
-            dataset.append(data)
-        print(json.dumps(dataset[0], indent=4))
-        return dataset
-
-    def load_aokvqa_dataset_from_json(self, version="v1p0") -> List[Dict]:
-        """
-        Builds a dataset from a JSON file using the AOKVQA dataset format.
-        Returns:
-            A list of dictionaries, where each dictionary represents a QA object.
-            Each QA object has the following keys: 'question_id', 'question', 'image_path', and 'direct_answers'.
-        """
-        assert self.split in ["train", "val", "test", "test_w_ans"]
-        dataset_dir = os.path.join(SCRATCH_DIR, "datasets", self.dataset_name)
-        dataset = json.load(open(os.path.join(dataset_dir, f"aokvqa_{version}_{self.split}.json")))
-        coco_dir = os.path.join(SCRATCH_DIR, "datasets", "coco_images")
-
-        qa_objects = []
-        for qa_obj in tqdm(dataset, desc=f"Preprocessing {self.dataset_name} dataset"):
-            image_id = qa_obj["image_id"]
-            question_id = qa_obj["question_id"]
-            question = qa_obj["question"]
-            choices = qa_obj["choices"]
-            answer = get_most_common_item(qa_obj["direct_answers"])  # hacky way to get the answer
-            random.shuffle(choices)
-            image_path = self._get_coco_path(self.split, image_id, coco_dir)
-            qa_dict = {
-                "question_id": question_id,
-                "question": question,
-                "image_path": image_path,
-                "answer": answer,
-                "choice": choices,
-            }
-            qa_objects.append(qa_dict)
-
-        print(json.dumps(qa_objects[0], indent=4))
-        return qa_objects
-
-    def load_visual7w_dataset_from_json(self):
+    def get_image_qa_multiple_choice_dataset(self, split, shuffle=False):
         dataset_root = "datasets"
-        fname = os.path.join(SCRATCH_DIR, dataset_root, self.dataset_name, "dataset.json")
+        fname = os.path.join(VQA_DATASET_DIR, dataset_root, self.dataset_name, "dataset.json")
         dataset = json.load(open(fname, "r"))
-        split = defaultdict(list)
+        dataset_split = defaultdict(list)
         for img in dataset["images"]:
-            split[img["split"]].append(img)
-
-        dataset_dir = os.path.join(SCRATCH_DIR, "datasets")
-        image_dir = DATASET_CONFIG[self.dataset_name]["image_root"]
-        img_prefix = DATASET_CONFIG[self.dataset_name]["image_prefix"]
-        image_root = os.path.join(dataset_dir, self.dataset_name, image_dir)
-
-        dataset = []
-        for img in tqdm(split[self.split], desc=f"Preprocessing {self.dataset_name} dataset"):
-            for pair in img["qa_pairs"]:
-                qa_obj = {}
-                image_id = pair["image_id"]
-                image_path = os.path.join(image_root, img_prefix + str(image_id) + ".jpg")
-                qa_obj["image_path"] = image_path
-                qa_obj["question"] = pair["question"]
-                choices = pair["multiple_choices"] + [pair["answer"]]
-                qa_obj["choice"] = choices
-                qa_obj["question_id"] = pair["qa_id"]
-                qa_obj["answer"] = pair["answer"]
-                dataset.append(qa_obj)
-
-        if self.split == "train" and len(dataset) > 12000:
-            random.shuffle(dataset)
-            dataset = dataset[:12000]
-            print("WARNING: Truncating train dataset to 12000 samples")
-
-        print(json.dumps(dataset[0], indent=4))
-        return dataset
-
-    def get_image_qa_multiple_choice_dataset(self, shuffle=False):
-        dataset_root = "datasets"
-        fname = os.path.join(SCRATCH_DIR, dataset_root, self.dataset_name, "dataset.json")
-        dataset = json.load(open(fname, "r"))
-        split = defaultdict(list)
-        for img in dataset["images"]:
-            split[img["split"]].append(img)
+            dataset_split[img["split"]].append(img)
 
         dataset = {}
-        for i, img in enumerate(split[self.split]):
+        for i, img in enumerate(dataset_split[split]):
             for pair in img["qa_pairs"]:
                 qa_obj = {}
                 qa_obj["image_id"] = pair["image_id"]
@@ -239,9 +63,58 @@ class VQADataset(Dataset):
                 dataset[qa_obj["question_id"]] = qa_obj
         return dataset
 
-    @staticmethod
-    def _get_coco_path(split, image_id, coco_dir):
-        return os.path.join(coco_dir, f"{split}2017", f"{image_id:012}.jpg")
+    def get_cached_context_file_path(self, split) -> str:
+        required_args = [
+            self.config.dataset_name,
+            self.config.gen_model_name,
+            self.config.vqa_format,
+            self.config.prompt_name,
+        ]
+        if any(val is None for val in required_args):
+            raise ValueError(
+                f"Please provide `dataset_name`, `model_name`, `vqa_format` and `prompt_name` to get the output directory path. "
+                f"Provided: {required_args}"
+            )
+        subdir_prefix = self.config.prompt_name.split(",")[1]
+        context_dir_str = (
+            "generated_caption_dumps" if self.config.vqa_format == "caption_vqa" else "generated_rationale_dumps"
+        )
+        dir_path = os.path.join(
+            OUTPUT_DIR,
+            "cache",
+            context_dir_str,
+            self.config.dataset_name,
+            self.config.gen_model_name,
+            self.config.vqa_format,
+            subdir_prefix,
+            split,
+        )
+        os.makedirs(dir_path, exist_ok=True)
+        file_path = os.path.join(dir_path, f"output.json")
+        return file_path
+
+    def load_cached_context_data(self, split: str):
+        fname = self.get_cached_context_file_path(split)
+        if not os.path.exists(fname):
+            raise FileNotFoundError(
+                f"File {fname} does not exist. Please generate the prompted captions first.\n"
+                f"python caption_generation.py --dataset_name {self.config.dataset_name} "
+                f"--model_name {self.config.model_name} --vqa_format caption_qa "
+                f"--prompt_name {self.config.prompt_name}"
+            )
+        logger.info(f"Loading prompted captions from {fname}")
+        with open(fname, "r") as f:
+            prompted_captions = json.load(f)
+        logger.info(f"Loaded prompted captions from {fname}")
+        cached_data = prompted_captions
+        return cached_data
+
+    def load_cached_context_data_by_ids(self, ids: Union[str, List[str]]):
+        if isinstance(ids, str):
+            context_batch = self.additional_context_data[str(ids)]  # handling winoground case
+        else:
+            context_batch = [self.additional_context_data[str(idx)] for idx in ids]
+        return context_batch
 
     def __repr__(self) -> str:
         return f"{self.dataset_name} {self.split} dataset with {len(self)} examples"
@@ -253,17 +126,15 @@ class VQADataset(Dataset):
         content = self.dataset[idx]
         question_id = content["question_id"]
         image_path = content["image_path"]
-        if self.dataset_name == "carets":
-            question = content["sent"]
-            answer = list(content["label"].keys())
-        elif self.dataset_name in ["vqa_v2", "okvqa"]:
+
+        if self.dataset_name in ["vqa_v2", "okvqa"]:
             answer = content["answers"][0].get("raw_answer", content["answers"][0].get("answer"))
             question = content["question"]
         else:
             question = content["question"]
             answer = content["answer"]
 
-        if self.dataset_name in ["visual7w", "aokvqa"]:
+        if self.dataset_name in ["visual7w", "aokvqa"] and self.config.task_type == "multiple_choice":
             choice = content["choice"]
             choice = [c.strip(punctuation) for c in choice]
             random.shuffle(choice)
@@ -285,32 +156,191 @@ class VQADataset(Dataset):
                 inp.update({"choice": choice})
 
             # TODO: this only works for standard-qa setting
-            if self.knn_handler is not None:
-                support_questions = self.knn_handler.find_nearest_neighbors(question)
+            if self.additional_context_data:
+                additional_context_str = self.load_cached_context_data_by_ids(str(question_id))
+                context_data_key = "rationale" if self.config.vqa_format == "cot_qa" else "caption"
+                inp.update({context_data_key: additional_context_str})
 
-            if self.caption_gen_cls:
-                prefix_caption = self.caption_gen_cls.load_by_ids(str(question_id))
-                inp.update({"caption": prefix_caption})
-            elif self.cot_gen_cls:
-                prefix_rationale = self.cot_gen_cls.load_by_ids(str(question_id))
-                inp.update({"rationale": prefix_rationale})
             prompted_question = self.prompt_handler.generic_prompting_handler_for_vqa(inp)
+
+            if self.in_context_provider is not None:
+                support_examples = self.in_context_provider.get_support_examples_by_question_id(question_id)
+                prompted_question = f"{support_examples} {prompted_question}"
+
             if "opt" in self.config.model_name:
                 prompted_question = prompted_question.replace("\n", " ")
 
-            if self.knn_handler is not None:
-                prompted_question = f"{support_questions} {prompted_question}"
-                # print(f"Prompted question: {prompted_question}")
+            if "kosmos" in self.config.model_name:
+                prompted_question = f"<grounding> {prompted_question}"
 
             prompted_question = prompted_question.strip()
             data.update({"prompted_question": prompted_question})
 
-        # this is a hacky way to add the processed image tensor and prompted question to the data
-        if self.processor is not None:
-            encoding = self.processor(images=image, padding="max_length", return_tensors="pt")
-            encoding = {k: v.squeeze() for k, v in encoding.items()}
-            data.update(**encoding)
         return data
+
+
+def load_caption(config, split, prompt_name="prefix_promptcap"):
+    fpath = os.path.join(
+        OUTPUT_DIR,
+        "cache",
+        "generated_caption_dumps",
+        config.dataset_name,
+        config.gen_model_name,
+        config.vqa_format,
+        prompt_name,
+        split,
+        "output.json",
+    )
+    caption_data = json.load(open(fpath))
+    logger.info(f"Nearest neighbour search > Loaded {len(caption_data)} examples from {fpath}")
+    return caption_data
+
+
+def load_rationale(config, split, prompt_name):
+    logger.info(config.dataset_name, config.model_name, prompt_name, split)
+    fpath = os.path.join(
+        OUTPUT_DIR,
+        "cache",
+        "generated_rationale_dumps",
+        config.dataset_name,
+        config.model_name,
+        config.vqa_format,
+        prompt_name,
+        split,
+        "output.json",
+    )
+    rationale_data = json.load(open(fpath))
+
+    return rationale_data
+
+
+class IncontextExamplesProvider:
+    def __init__(self, config):
+        self.config = config
+        self.split = "train"
+        if "," in config.prompt_name:
+            self.prompt_name = config.prompt_name.split(",")[1]
+        else:
+            self.prompt_name = config.prompt_name
+        self.dataset_name = config.dataset_name
+        self.vqa_format = config.vqa_format
+        self.support_data_dict = self.get_support_data_dict(
+            config.dataset_name, self.split, self.prompt_name, config.task_type == "multiple_choice"
+        )
+        self.nearest_neighbor_ids = self.load_cached_nearest_neighbor_ids(config.dataset_name)
+
+    def load_cached_nearest_neighbor_ids(self, dataset_name):
+        fpath = os.path.join(
+            OUTPUT_DIR,
+            "cache",
+            "nearest_neighbors",
+            dataset_name,
+            "train_to_val",
+            "output.json",
+        )
+
+        nearest_neighbor_ids = json.load(open(fpath))
+        return nearest_neighbor_ids
+
+    def get_support_data_dict(self, dataset_name: str, split: str, multiple_choice: bool, prompt_name: str):
+        exemplar_dataset = get_vqa_dataset(dataset_name, split, multiple_choice)
+
+        context_data = {}
+        if self.vqa_format == "caption_qa":
+            context_data = load_caption(self.config, split, prompt_name)
+        elif self.vqa_format == "cot_qa":
+            context_data = load_rationale(self.config, split, prompt_name)
+
+        support_data_map = {}
+        for idx in range(len(exemplar_dataset)):
+            content = exemplar_dataset[idx]
+
+            question_id = content["question_id"]
+            if self.dataset_name in ["vqa_v2", "okvqa"]:
+                answer = content["answers"][0].get("raw_answer", content["answers"][0].get("answer"))
+                question = content["question"]
+            else:
+                question = content["question"]
+                answer = content["answer"]
+
+            choices = content.get("choice", "")
+            if choices:
+                last_choice = choices.pop()
+                options = f"{', '.join(choices)} or {last_choice}?"
+                choices = options
+
+            context = context_data.get(str(question_id), "")
+
+            support_data_map[question_id] = {
+                "question": question,
+                "answer": answer,
+                "choice": choices,
+                "context": context,
+            }
+        return support_data_map
+
+    # TODO: this is a hacky way to add the support examples to the data, need to refactor this
+    def format_support_example(self, support_ex, vqa_format):
+        if vqa_format in ["caption_vqa", "standard_vqa"]:
+            context = support_ex.get("context", "")
+            context_str = f"{context} " if context else ""
+            if "short_answer" in self.config.prompt_name:
+                return f"Context: {context_str} Question: {support_ex['question']} {support_ex.get('choice', '')} Short answer: {support_ex['answer']} "
+            else:
+                return f" {context_str} {support_ex['question']} {support_ex.get('choice', '')} {support_ex['answer']}"
+        elif vqa_format == "cot_vqa":
+            return f"Q: {support_ex.get('question', '')} A: {support_ex['context']}"
+        else:
+            raise ValueError(f"Invalid vqa_format: {vqa_format}")
+
+    def get_support_examples_by_question_id(self, question_id):
+        support_question_ids = self.nearest_neighbor_ids.get(
+            question_id, self.nearest_neighbor_ids.get(str(question_id))
+        )
+        support_examples = [
+            self.support_data_dict.get(qid, self.support_data_dict.get(str(qid))) for qid in support_question_ids
+        ]
+        logger.debug(f"Support examples: {support_examples}")
+        support_examples = [self.format_support_example(ex, self.vqa_format) for ex in support_examples]
+        random.shuffle(support_examples)
+        support_questions = "\n".join(support_examples)
+        instructions = "In this task, your goal is to write an answer to a question about the image.\n---\nTo write the answer, here are some sample QA suggestions (not related to the given image):\n"
+        # instructions = "In this task, your goal is to write an answer to a question about the image. Here are some suggested QA pairs (not related to the given image)\n"
+        support_questions = instructions + support_questions + "\nNow answer the following question about the image."
+        return support_questions
+
+
+def collate_fn_builder(processor=None, tokenizer=None):
+    def collate_fn(batch):
+        # get the keys from the first batch element
+        batch_keys = batch[0].keys()
+        bkeys = ["question", "answer", "question_id", "prompted_question", "image", "image_path"]
+
+        # Create the batch dictionary
+        processed_batch = {}
+        for bkey in bkeys:
+            if bkey in batch_keys:
+                processed_batch[bkey + "s"] = [example[bkey] for example in batch]
+
+        if processor is not None:
+            encoding = processor(
+                images=processed_batch["images"],
+                text=processed_batch["prompted_questions"],
+                padding=True,
+                return_tensors="pt",
+            )
+            processed_batch.update(**encoding)
+
+        if tokenizer is not None:
+            text_inputs = tokenizer(
+                [example["prompted_question"] for example in batch], padding=True, return_tensors="pt"
+            )
+            processed_batch["input_ids"] = text_inputs["input_ids"]
+            processed_batch["attention_mask"] = text_inputs["attention_mask"]
+        # processed_batch["pixel_values"] = torch.stack([example["pixel_values"] for example in batch])
+        return processed_batch
+
+    return collate_fn
 
 
 def collate_fn(batch):
@@ -324,37 +354,3 @@ def collate_fn(batch):
             batch_dict[bkey + "s"] = [example[bkey] for example in batch]
 
     return batch_dict
-
-
-class TestVQA(unittest.TestCase):
-    def setUp(self):
-        self.dataset = VQADataset(dataset_name="okvqa")
-
-    def test_length(self):
-        self.assertEqual(
-            len(self.dataset), 5046
-        )  # replace 1000 with the actual number of examples in the validation set
-
-    def test_example_keys(self):
-        example = self.dataset[0]
-        self.assertTrue("image" in example.keys())
-        self.assertTrue("question" in example.keys())
-        self.assertTrue("answer" in example.keys())
-        self.assertTrue("question_id" in example.keys())
-        self.assertTrue("id" in example.keys())
-
-    def test_image(self):
-        example = self.dataset[0]
-        image = example["image"]
-        self.assertEqual(image.size, (640, 480))  # replace (224, 224) with the actual size of the images in the dataset
-        self.assertEqual(image.mode, "RGB")
-
-    def test_collate(self):
-        batch = [self.dataset[i] for i in range(5)]
-        collated = collate_fn(batch)
-        self.assertTrue("images" in collated.keys())
-        self.assertTrue("questions" in collated.keys())
-        self.assertTrue("answers" in collated.keys())
-        self.assertEqual(len(collated["images"]), 5)
-        self.assertEqual(len(collated["questions"]), 5)
-        self.assertEqual(len(collated["answers"]), 5)

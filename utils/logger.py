@@ -1,6 +1,7 @@
 import logging
 import os
 
+
 class Singleton(type):
     _instances = {}
 
@@ -9,12 +10,13 @@ class Singleton(type):
             cls._instances[cls] = super().__call__(*args, **kwargs)
         return cls._instances[cls]
 
+
 class Logger(metaclass=Singleton):
     def __init__(self, name, log_file=None, log_level=logging.INFO):
         self.logger = logging.getLogger(name)
         self.logger.setLevel(log_level)
-        
-        formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(name)s:%(lineno)d: %(message)s')
+
+        formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s:%(lineno)d: %(message)s")
 
         console_handler = logging.StreamHandler()
         console_handler.setFormatter(formatter)

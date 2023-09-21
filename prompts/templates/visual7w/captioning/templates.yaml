@@ -1,0 +1,159 @@
+dataset: visual7w
+subset: caption
+
+templates:
+  9d7b18de-91df-47c7-93eb-b44b4082b37a: !Template
+    id: 9d7b18de-91df-47c7-93eb-b44b4082b37a
+    jinja: 'An image of "{{ caption }}."'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: an_image_of
+    author: Rabiul Awal
+          
+  e3c76d77-13b8-45a7-bb1a-5470b41b9e36: !Template
+    id: e3c76d77-13b8-45a7-bb1a-5470b41b9e36
+    jinja: 'A photo of "{{ caption }}."'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: a_photo_of
+    author: Rabiul Awal
+
+  0bbd5b6f-f319-4d9f-b4b6-f5e829054714: !Template
+    id: 0bbd5b6f-f319-4d9f-b4b6-f5e829054714
+    jinja: 'A picture of "{{ caption }}."'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: a_picture_of
+    author: Rabiul Awal
+
+  52602d20-fefa-4e35-96cb-87838c0f036f: !Template
+    id: 52602d20-fefa-4e35-96cb-87838c0f036f
+    jinja: 'In this picture - "{{ caption }}."'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: in_this_picture    
+    author: Rabiul Awal
+
+  7123c8b3-3b98-45f2-af49-cc8e0e2b9c39: !Template
+    id: 7123c8b3-3b98-45f2-af49-cc8e0e2b9c39
+    jinja: 'In this image - "{{ caption }}."'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: in_this_image    
+    author: Rabiul Awal
+
+  84ba09aa-1e0c-4f6a-82b7-8ed725964615: !Template
+    id: 84ba09aa-1e0c-4f6a-82b7-8ed725964615
+    jinja: 'In this scene - "{{ caption }}."'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: in_this_scene    
+    author: Rabiul Awal
+
+  60c0f0e2-7055-45a1-82d7-ced92c0dfda5: !Template
+    id: 60c0f0e2-7055-45a1-82d7-ced92c0dfda5
+    jinja: 'Describe the scene'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_describe_the_scene    
+    author: Rabiul Awal
+
+  1a3a7ecf-58c3-4a3b-9df9-c5229375f8c5: !Template
+    id: 1a3a7ecf-58c3-4a3b-9df9-c5229375f8c5
+    jinja: 'Describe the image'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_describe_the_image
+    author: Rabiul Awal
+
+  2a4a4c47-7457-48fc-a8b4-c0f256a6e1a6: !Template
+    id: 2a4a4c47-7457-48fc-a8b4-c0f256a6e1a6
+    jinja: 'What is happening in the image?'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_whats_happening
+    author: Rabiul Awal
+
+  3c3a3d18-121f-40a7-ba1d-bc932bd7b161: !Template
+    id: 3c3a3d18-121f-40a7-ba1d-bc932bd7b161
+    jinja: 'Please describe the image'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_please_describe_the_image
+    author: Rabiul Awal
+
+  4d4d92da-2b8f-4c34-89d4-4f1501b8a4b6: !Template
+    id: 4d4d92da-2b8f-4c34-89d4-4f1501b8a4b6
+    jinja: 'What do you see?'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_whats_the_image
+    author: Rabiul Awal
+
+  7d7d04fc-ec21-432a-85b3-56d3c3d2f54c: !Template
+    id: 7d7d04fc-ec21-432a-85b3-56d3c3d2f54c
+    jinja: 'A photo of'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_a_photo_of
+    author: Rabiul Awal
+
+  8d8d8d8c-9a0b-1b2a-3c4d-5e6f7d8c9a0b: !Template
+    id: 8d8d8d8c-9a0b-1b2a-3c4d-5e6f7d8c9a0b
+    jinja: ''
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_long_caption
+    author: Rabiul Awal
+  
+  6f7d8c9a-0b1b-2a3c-4d5e-6f7d8c9a0b1b: !Template
+    id: 6f7d8c9a-0b1b-2a3c-4d5e-6f7d8c9a0b1b
+    jinja: 'Please describe this image in great details to answer the given question: {{ question }} A photo of'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_promptcap_in_details_a_photo_of
+
+  7f8e9d0a-1b2a-3c4d-5e6f-7d8c9a0b1b2a: !Template
+    id: 7f8e9d0a-1b2a-3c4d-5e6f-7d8c9a0b1b2a
+    jinja: 'Please describe this image according to the given question: {{ question }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_promptcap
+
+  7b0b0b0b-0b0b-0b0b-0b0b-0b0b0b0b0b0b: !Template
+    id: 7b0b0b0b-0b0b-0b0b-0b0b-0b0b0b0b0b0b
+    jinja: 'Please describe this image according to answer the given question: {{ question }} A photo of'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_promptcap_a_photo_of 
+
+  3d8c9a0b-1b2a-3c4d-5e6f-7d8c9a0b1b2a: !Template
+    id: 3d8c9a0b-1b2a-3c4d-5e6f-7d8c9a0b1b2a
+    jinja: |
+      {% if question %}
+      In this task, you are asked to describe this image according to the given question. Ensure that you pay close attention to the question words and include specific details about the scene, including objects and their attributes, as well as context about what is happening. 
+      To create a high-quality caption, use any knowledge that you have about the image to refine your description.
+      {{ question }}
+      {% else %}
+      {{ caption }}
+      {% endif %}
+
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_describe_image_instructed
+    author: Rabiul Awal
+
+
+  a3e4fb3f-a3c7-4837-a624-dade9457ef3b: !Template
+    id: a3e4fb3f-a3c7-4837-a624-dade9457ef3b
+    jinja: |
+      {% if question %}
+      Question: {{ question }} Question guided detailed image description: 
+      {% else %}
+      {{ caption }}
+      {% endif %}
+
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_describe_image_guided
+    author: Rabiul Awal

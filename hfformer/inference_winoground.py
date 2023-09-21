@@ -1,19 +1,18 @@
 import os
 from typing import List, Union
 
-from string import punctuation
+import torch
 from datasets import load_dataset
 # pip install accelerate
 from PIL import Image
 from torchvision import transforms
 from tqdm import tqdm
-import torch
-from modeling_utils import (get_dir_path, get_prompt_handler,
-                            load_model_and_processors)
-from utils.globals import MODEL_CLS_INFO
+
+from evals.vqa_accuracy import eval_winoground
 from utils.handler import PromptingHandler
 from utils.logger import Logger
-from utils.vqa_accuracy import eval_winoground
+from vqa_zero.inference_utils import (get_output_dir_path, get_prompt_template_handler,
+                                     load_model_and_processors)
 
 logger = Logger(__name__)
 
@@ -185,7 +184,7 @@ def run_inference(args):
 
     device = args.device
     model, processor = load_model_and_processors(args.model_name, device)
-    output_dir = get_dir_path(args)
+    output_dir = get_output_dir_path(args)
     if os.path.exists(output_dir) and not args.overwrite_output_dir:
         logger.info(f"Output directory {output_dir} already exists. Skipping inference.")
         return
@@ -198,7 +197,7 @@ def run_inference(args):
             prompt_name = args.prompt_name.split(",")
 
     logger.info(f'Selected prompt name :"{prompt_name}"')
-    handler, template_expr = get_prompt_handler(args, prompt_name)
+    handler, template_expr = get_prompt_template_handler(args, prompt_name)
     args.num_beams = 5
     args.max_length = 10
     print(processor.tokenizer.cls_token_id)

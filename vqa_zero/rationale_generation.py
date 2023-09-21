@@ -1,43 +1,38 @@
 import json
-from fuzzywuzzy import fuzz
 import os
-from string import punctuation
-from typing import List, Union
-import time
 import re
-from transformers import AutoProcessor, Blip2ForConditionalGeneration
+import time
+from typing import List, Union
+
 import torch
+from dataset_zoo.custom_dataset import VQADataset, collate_fn
+from thefuzz import fuzz
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-
-from dataset_zoo.custom_dataset import VQADataset, collate_fn
-from modeling_utils import get_optimal_batch_size
-from utils.okvqa_utils import extract_answer_from_cot
+from transformers import AutoProcessor, Blip2ForConditionalGeneration
+from utils.config import OUTPUT_DIR
 from utils.globals import MODEL_CLS_INFO
-from utils.config import PROJECT_DIR
 from utils.handler import PromptingHandler
 from utils.logger import Logger
+from evals.answer_postprocess import extract_answer_from_cot
+
 
 logger = Logger(__name__)
 
 
-# This class exclusively loads cached rationale data, primarily designed for use with the
-# inference_vqa.py script. The script assumes that rationaels have already been generated and saved
-# in a file. To generate rationales, please refer to the rationale_generator.py script.
-
 N = 5
-split_map = {
-    "train": "train",
-    "val": "",
-    "testdev": "testdev",
-}
-class CoTPrefixHandler:
+
+class ChainOfThoughtGenerator:
+    """
+    This class class generates chain-of-thought rationales for VQA questions.
+    """
+
     def __init__(self, args, device="cuda"):
         self.args = args
         self.data = None  # rationale data
         self.device = device
 
-    def generate_cot_to_use_as_prompt_prefix(self, prompt_handler: PromptingHandler, split):
+    def generate_chain_of_thought_rationale(self, prompt_handler: PromptingHandler, split):
         if os.path.exists(self.get_file_path(split)):
             file_mod_time = os.path.getmtime(self.get_file_path(split))
             current_time = time.time()
@@ -48,9 +43,11 @@ class CoTPrefixHandler:
 
         model_name = MODEL_CLS_INFO["hfformer"][self.args.gen_model_name]["name"]
         self.processor = AutoProcessor.from_pretrained(model_name)
-        self.model = Blip2ForConditionalGeneration.from_pretrained(model_name, torch_dtype=torch.bfloat16, device_map="auto")
+        self.model = Blip2ForConditionalGeneration.from_pretrained(
+            model_name, torch_dtype=torch.bfloat16, device_map="auto"
+        )
 
-        batch_size = get_optimal_batch_size(self.args)
+        batch_size = 32
         dataset_args = {
             "config": self.args,
             "dataset_name": self.args.dataset_name,
@@ -83,7 +80,9 @@ class CoTPrefixHandler:
             images = batch["images"]
             questions = batch["questions"]
             prompt = batch["prompted_questions"]
-            inputs = self.processor(images=images, text=prompt, padding=True, return_tensors="pt").to(self.device, torch.bfloat16)
+            inputs = self.processor(images=images, text=prompt, padding=True, return_tensors="pt").to(
+                self.device, torch.bfloat16
+            )
 
             generated_ids = self.model.generate(
                 **inputs,
@@ -91,18 +90,22 @@ class CoTPrefixHandler:
                 num_beams=5,
                 length_penalty=1.4,
                 no_repeat_ngram_size=3,
-            )           
+            )
             generated_rationales = self.processor.batch_decode(generated_ids, skip_special_tokens=True)
             assert len(generated_rationales) == len(questions)
-                
-            for idx, (question_id, question, rationale) in enumerate(zip(batch["question_ids"], questions, generated_rationales)):                
+
+            for idx, (question_id, question, rationale) in enumerate(
+                zip(batch["question_ids"], questions, generated_rationales)
+            ):
                 prediction = extract_answer_from_cot(rationale)
-                answer = batch['answers'][idx]
-                    
+                answer = batch["answers"][idx]
+
                 fuzz_score = fuzz.ratio(answer, prediction)
                 if self.args.vqa_format == "cot_qa" and fuzz_score > 80:
                     output[question_id] = rationale
-                    print(f"Question: {question} | Rationale: {rationale} | Prediction: {prediction} | Answer: {answer}")
+                    print(
+                        f"Question: {question} | Rationale: {rationale} | Prediction: {prediction} | Answer: {answer}"
+                    )
                     success += 1
                 else:
                     output[question_id] = rationale
@@ -117,7 +120,9 @@ class CoTPrefixHandler:
             if self.args.model_name == "blip_vqa":
                 return self.model.generate(samples=samples)
             else:
-                return self.model.generate(samples=samples, max_length=100, length_penalty=1.4, num_beams=5, no_repeat_ngram_size=3)
+                return self.model.generate(
+                    samples=samples, max_length=100, length_penalty=1.4, num_beams=5, no_repeat_ngram_size=3
+                )
 
     def generate_hfformer(self, samples, max_new_tokens, num_beams, length_penalty, no_repeat_ngram_size):
         with torch.no_grad(), torch.cuda.amp.autocast():
@@ -131,7 +136,6 @@ class CoTPrefixHandler:
             output = self.processor.batch_decode(generated_ids, skip_special_tokens=True)
 
         return output
-
 
     def generate_iterative(
         self,
@@ -179,7 +183,6 @@ class CoTPrefixHandler:
             )
         self.data = prompted_rationales
 
-
     def remove_answer_from_rationale(self, rationale, stragety="iterative"):
         rationale = rationale.replace("To answer the question, consider the following:", "")
         rationale = rationale.replace("To answer the above question, the relevant sentence is:", "")
@@ -188,14 +191,14 @@ class CoTPrefixHandler:
         # print(f"Rationale: {rationale} | Extracted answer: {extracted_answer}")
         if extracted_answer:
             if stragety == "iterative":
-                match = re.search(r'\. (?=[A-Z])', rationale)
+                match = re.search(r"\. (?=[A-Z])", rationale)
                 if match:
-                    rationale = rationale[:match.end()-1]
+                    rationale = rationale[: match.end() - 1]
             else:
                 # Find the index of the extracted answer and remove the sentence containing it
                 answer_start_index = rationale.rfind(extracted_answer)
-                last_period_index = rationale[:answer_start_index].rfind('.')
-                rationale = rationale[:last_period_index+1].strip()
+                last_period_index = rationale[:answer_start_index].rfind(".")
+                rationale = rationale[: last_period_index + 1].strip()
         # print(f"Rationale after removing answer: {rationale}")
         return rationale
 
@@ -213,7 +216,7 @@ class CoTPrefixHandler:
 
         logger.info(f"Saved generated rationales to {fname}")
 
-    def get_dir_path(self, split) -> str:
+    def get_file_path(self, split) -> str:
         required_args = [self.args.dataset_name, self.args.gen_model_name, self.args.vqa_format, self.args.prompt_name]
         if any(val is None for val in required_args):
             raise ValueError(
@@ -225,23 +228,18 @@ class CoTPrefixHandler:
         else:
             subdir_prefix = self.args.prompt_name
 
-        split = split_map[split]
         dir_path = os.path.join(
-            PROJECT_DIR,
-            "output",
-            "generated_rationale_dumps" if "decompose" not in self.args.prompt_name else "decomposed_dumps",
+            OUTPUT_DIR,
+            "cache",
+            "generated_rationale_dumps",
             self.args.dataset_name,
-            self.args.gen_model_name,  # "git_large_textcaps",
+            self.args.gen_model_name, 
             self.args.vqa_format,
             subdir_prefix,
             split,
         )
         os.makedirs(dir_path, exist_ok=True)
 
-        return dir_path
-
-    def get_file_path(self, split) -> str:
-        dir_path = self.get_dir_path(split)
         file_path = os.path.join(dir_path, f"output.json")
         return file_path
 
@@ -260,4 +258,3 @@ class CoTPrefixHandler:
         if isinstance(prompt_txt, str):
             prompt_txt = [prompt_txt] * len(questions)
         return prompt_txt
-
