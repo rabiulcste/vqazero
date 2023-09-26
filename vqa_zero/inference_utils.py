@@ -90,7 +90,6 @@ def get_optimal_batch_size_v2(model, seq_length, batch_size):
     return optimal_batch_size
 
 
-
 def generate_output_blip(args, model, samples):
     with torch.no_grad(), torch.cuda.amp.autocast():
         if args.model_name == "blip_vqa":
@@ -117,7 +116,8 @@ def get_image_tensors_winoground(example, vis_processors):
 def get_prompt_template_handler(args, prompt_name: str = None):
     if prompt_name is None and args.prompt_name is not None:
         prompt_name = args.prompt_name
-    else:
+
+    if prompt_name is None:
         raise ValueError(f"prompt_name should be provided. Got {prompt_name}")
 
     if len(prompt_name.split(",")) > 1:
@@ -169,7 +169,7 @@ def apply_prompt_to_example_winoground(handler: PromptingHandler, example):
     )
 
 
-def get_output_dir_path(args):
+def get_output_dir_path(args, **kwargs):
     required_args = [args.dataset_name, args.model_name, args.vqa_format, args.prompt_name]
     if any(val is None for val in required_args):
         raise ValueError(
@@ -199,18 +199,22 @@ def get_output_dir_path(args):
     if args.self_consistency:
         path_components.append("self_consistency")
 
-    if args.vicuna_ans_parser:
-        path_components.append("vicuna_ans_parser")
+    if kwargs.get("identifier"):
+        path_components.append(kwargs.get("identifier"))
+        
+    if args.dataset_name == "vqa_v2" and args.chunk_id is not None:
+        path_components.append(f"chunk{args.chunk_id}")
 
     # Join all path components together
     dir_path = os.path.join(*path_components)
     return dir_path
 
+
 class CustomEncoder(json.JSONEncoder):
     def default(self, obj):
-        if hasattr(obj, 'tolist'):  # Convert tensors to lists
+        if hasattr(obj, "tolist"):  # Convert tensors to lists
             return obj.tolist()
-        elif hasattr(obj, 'name'):  # Convert PyTorch device to its name string
+        elif hasattr(obj, "name"):  # Convert PyTorch device to its name string
             return obj.name
         elif isinstance(obj, type):  # If it's a type/class object
             return str(obj)
@@ -228,7 +232,7 @@ def save_to_json(json_path, all_results):
     logger.info(f"Saved the output to {json_path}")
 
 
-def save_vqa_answers(output_dir, dataset_name, predictions):
+def save_vqa_answers(output_dir, dataset_name, predictions, vicuna_ans_parser=False):
     """
     Saves the predictions in a format that is compatible with the VQA accuracy computation script.
     """
@@ -237,12 +241,18 @@ def save_vqa_answers(output_dir, dataset_name, predictions):
     with open(annotation_data_path) as f:
         answer_data = json.load(f)
 
+    # Infer the type of question_id from the type of the first key in predictions
+    converter = str if isinstance(next(iter(predictions)), str) else int
+
     for ann in answer_data["annotations"]:
         question_id = ann["question_id"]
+        question_id = converter(ann["question_id"])
+
         if question_id not in predictions:
             logger.info("warning: missing question_id: %s" % question_id)
             continue
-        pred_key = "raw_prediction" if dataset_name == "vqa_v2" else "prediction"
+        
+        pred_key = "raw_prediction" if dataset_name == "vqa_v2" and not vicuna_ans_parser else "prediction"
         answer = predictions[question_id][pred_key]
         ann["answer"] = answer
 

@@ -1,23 +1,25 @@
 import json
 import os
+import re
 import time
 from typing import List
-import re
 
 import torch
-from dataset_zoo.custom_dataset import VQADataset, collate_fn
+from PIL import Image
 from promptcap import PromptCap
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from transformers import AutoProcessor, Blip2ForConditionalGeneration
+from transformers import (AutoModelForVision2Seq, AutoProcessor,
+                          Blip2ForConditionalGeneration)
+
+from dataset_zoo.custom_dataset import VQADataset, collate_fn
 from utils.config import OUTPUT_DIR
 from utils.globals import MODEL_CLS_INFO
 from utils.handler import PromptingHandler
 from utils.logger import Logger
-
 from vqa_zero.inference_utils import (apply_prompt_to_example_winoground,
-                            get_image_tensors_winoground,
-                            load_model_and_processors)
+                                      get_image_tensors_winoground,
+                                      load_model_and_processors)
 
 logger = Logger(__name__)
 
@@ -34,16 +36,33 @@ class CaptionGenerator:
         self.data = None  # caption data
         self.device = device
 
+    def load_model_and_processor(self):
+        model_name = MODEL_CLS_INFO["hfformer"][self.args.gen_model_name]["name"]
+        processor = AutoProcessor.from_pretrained(model_name, trust_remote_code=True)
+
+        if "kosmos" in model_name:
+            model = AutoModelForVision2Seq.from_pretrained(model_name, trust_remote_code=True)
+            model = model.to("cuda")
+            if "kosmos" in model_name:
+                processor.tokenizer.padding_side = "left"
+        else:
+            if "opt" in model_name:
+                processor.tokenizer.padding_side = "left"
+            model = Blip2ForConditionalGeneration.from_pretrained(
+                model_name, torch_dtype=torch.bfloat16, device_map="auto"
+            )
+        logger.info(
+            f"Initialized {self.__class__.__name__} with model '{model.__class__.__name__}' and processor '{processor.__class__.__name__}'"
+        )
+
+        return model, processor
+
     def generate_caption(self, prompt_handler: PromptingHandler, split="val"):
         if os.path.exists(self.get_file_path(split)):
             logger.info(f"Caption data already exists. You can load it from cache {self.get_file_path(split)}")
+            return
 
-        model_name = MODEL_CLS_INFO["hfformer"][self.args.gen_model_name]["name"]
-        self.processor = AutoProcessor.from_pretrained(model_name)
-        self.model = Blip2ForConditionalGeneration.from_pretrained(
-            model_name, torch_dtype=torch.bfloat16, device_map="auto"
-        )
-
+        self.model, self.processor = self.load_model_and_processor()
         batch_size = 32  # hardcoded for now
         dataset_args = {
             "config": self.args,
@@ -78,18 +97,21 @@ class CaptionGenerator:
             questions = batch["questions"]
             answers = batch["answers"]
             prompts = self.get_prompt_str_for_prefix_caption(prompt_handler, questions)  # prefix for caption
-            inputs = self.processor(images=images, text=prompts, padding=True, return_tensors="pt").to(
-                self.device, torch.bfloat16
-            )
-            generated_ids = self.model.generate(
-                **inputs,
-                max_new_tokens=100,
-                num_beams=3,
-                num_return_sequences=1,
-                no_repeat_ngram_size=3,
-            )
-            generated_captions = self.processor.batch_decode(generated_ids, skip_special_tokens=True)
-            generated_captions = [re.sub(r'^\s+|\s+$', '', caption) for caption in generated_captions]
+            # inputs = self.processor(images=images, text=prompts, padding=True, return_tensors="pt").to(
+            #     self.device, torch.bfloat16
+            # )
+            # generated_ids = self.model.generate(
+            #     **inputs,
+            #     max_new_tokens=100,
+            #     num_beams=3,
+            #     num_return_sequences=1,
+            #     no_repeat_ngram_size=3,
+            # )
+            # generated_captions = self.processor.batch_decode(generated_ids, skip_special_tokens=True)
+
+            generated_captions = self._generate(prompts, images)
+
+            generated_captions = [re.sub(r"^\s+|\s+$", "", caption) for caption in generated_captions]
             if len(generated_captions) != len(questions):
                 new_list = []
                 for i in range(0, len(generated_captions), 3):
@@ -103,10 +125,10 @@ class CaptionGenerator:
             # these are fixed streps for all caption generation
             if prompt_handler.prompt_name == "prefix_a_photo_of":
                 generated_captions = [f"A photo of {gen_caption}." for gen_caption in generated_captions]
-            # else:
-            #     generated_captions = [
-            #         prompt_handler.generic_prompting_handler_for_vqa({"caption": ex}) for ex in generated_captions
-            #     ]
+            elif not prompt_handler.prompt_name.startswith("prefix_"):
+                generated_captions = [
+                    prompt_handler.generic_prompting_handler_for_vqa({"caption": ex}) for ex in generated_captions
+                ]
 
             if len(generated_captions) != len(questions):
                 new_list = []
@@ -123,20 +145,38 @@ class CaptionGenerator:
 
         self.save(output, split)
 
-    def generate_blip(self, samples):
-        with torch.no_grad(), torch.cuda.amp.autocast():
-            if self.args.model_name == "blip_vqa":
-                return self.model.generate(samples=samples)
-            else:
-                return self.model.generate(
-                    samples=samples, max_length=50, length_penalty=1.45, num_beams=5, no_repeat_ngram_size=3
-                )
+    def generate_blip2(self, inputs, max_new_tokens=50, num_beams=3, length_penalty=1.4, no_repeat_ngram_size=3):
+        with torch.no_grad():
+            generated_ids = self.model.generate(
+                **inputs,
+                max_new_tokens=max_new_tokens,
+                length_penalty=length_penalty,
+                num_beams=num_beams,
+                no_repeat_ngram_size=no_repeat_ngram_size,
+            )
+        generated_outputs = self.processor.batch_decode(generated_ids, skip_special_tokens=True)
 
-    def generate_hfformer(self, samples, max_new_tokens, num_beams=5, length_penalty=1.4, no_repeat_ngram_size=3):
-        # print(f"samples: {samples} | max_new_tokens: {max_new_tokens} | num_beams: {num_beams} | length_penalty: {length_penalty} | no_repeat_ngram_size: {no_repeat_ngram_size}")
-        # with torch.no_grad(), torch.cuda.amp.autocast():
+        return generated_outputs
+
+    def generate_kosmos(self, inputs, max_new_tokens=150):
+        with torch.no_grad():
+            generated_ids = self.model.generate(
+                pixel_values=inputs["pixel_values"].to("cuda"),
+                input_ids=inputs["input_ids"][:, :-1].to("cuda"),
+                attention_mask=inputs["attention_mask"][:, :-1].to("cuda"),
+                img_features=None,
+                img_attn_mask=inputs["img_attn_mask"][:, :-1].to("cuda"),
+                use_cache=True,
+                max_new_tokens=max_new_tokens,
+            )
+        generated_texts = self.processor.batch_decode(generated_ids, skip_special_tokens=True)
+        generated_outputs, entities_list = zip(*[self.processor.post_process_generation(gt) for gt in generated_texts])
+
+        return generated_outputs
+
+    def generate_hfformer(self, inputs, max_new_tokens=50, num_beams=5, length_penalty=1.4, no_repeat_ngram_size=3):
         generated_ids = self.model.generate(
-            **samples,
+            **inputs,
             max_new_tokens=max_new_tokens,
             num_beams=num_beams,
             length_penalty=length_penalty,
@@ -162,16 +202,22 @@ class CaptionGenerator:
 
         return output
 
-    def generate_standard(self, image_tensors, questions: List[str], prompt_handler: PromptingHandler):
-        prompt_txt = self.get_prompt_str_for_prefix_caption(prompt_handler, questions)  # prefix for caption
+    def _generate(self, prompts: List[str], images: List[Image.Image]):
+        if self.args.gen_model_name.startswith("blip"):
+            inputs = self.processor(images=images, text=prompts, padding=True, return_tensors="pt").to(
+                self.device, torch.bfloat16
+            )
+            generated_captions = self.generate_blip2(inputs)
 
-        if self.args.model_name.startswith("blip"):
-            samples = {
-                "image": torch.stack(image_tensors).to(self.model.device),
-                "prompt": prompt_txt,
-            }
-            generated_captions = self.generate_blip(samples)
-        elif self.args.model_name == "open_flamingo_lamma":
+        elif self.args.gen_model_name.startswith("kosmos"):
+            prompts = [f"<grounding> {text}" for text in prompts]
+            inputs = self.processor(images=images, text=prompts, padding=True, return_tensors="pt").to(self.device)
+            generated_captions = self.generate_kosmos(inputs)
+            prompts = [re.sub("^<grounding> ", "", q) for q in prompts]
+            generated_captions = [re.split(r"[\n.]", o[len(q) :])[0] for q, o in zip(prompts, generated_captions)]
+            generated_captions = [o.strip() for o in generated_captions]
+
+        elif self.args.gen_model_name == "open_flamingo_lamma":
             from mlfoundations.utils import get_demo_image
 
             if isinstance(self.processor, tuple):
@@ -196,14 +242,11 @@ class CaptionGenerator:
             generated_captions = [text.replace(few_show_examples, "") for text in generated_captions]
             logger.info(f"Generated captions: {json.dumps(generated_captions, indent=2)}")
         else:
-            input_ids = self.processor(text=prompt_txt, add_special_tokens=False).input_ids
-            samples = {
-                "input_ids": input_ids,
-                "pixel_values": torch.stack(image_tensors).to(self.model.device),
-            }
+            inputs = self.processor(text=prompts, images=images, add_special_tokens=False).to(self.device)
             generated_captions = self.generate_hfformer(
-                samples, max_new_tokens=50, num_beams=4, length_penalty=0.6, no_repeat_ngram_size=3
+                **inputs, max_new_tokens=50, num_beams=3, length_penalty=1.4, no_repeat_ngram_size=3
             )
+
         return generated_captions
 
     def save(self, output_captions, split):
@@ -333,7 +376,7 @@ class PromptCapGenerarator(CaptionGenerator):
         if os.path.exists(self.get_file_path(split)):
             logger.info(f"Caption data already exists. You can load it from cache {self.get_file_path(split)}")
             return
-        
+
         self._load_model(self.device)
 
         batch_size = 32  # hardcoded for now

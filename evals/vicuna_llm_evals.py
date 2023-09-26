@@ -122,8 +122,7 @@ def extract_answers_from_predictions_vicunallm(
 
         # Create a list to store the final results
         batch_answers = []
-        for i, output in enumerate(generated_outputs):
-            text = output[len(all_prompts[i]) :]
+        for text in generated_outputs:
             split_text = text.split(
                 f"{num_examples_in_task_prompt+2}. {answer_extractor.prompt_data['io_structure']['input_keys']}:"
             )
@@ -133,12 +132,18 @@ def extract_answers_from_predictions_vicunallm(
                 desired_text = text
             batch_answers.append(desired_text.replace("\n", "").strip())
 
-        batch_answers = postprocess_batch_vqa_generation_blip2(args.dataset_name, batch_answers)
-        batch_answers = [clean_last_word(ans) for ans in batch_answers]
-
         for qid, curr_data, input_text, ans in zip(batch["qids"], batch["data"], batch["input_text"], batch_answers):
             curr_data.update({"prediction": ans, "input_for_vicuna": input_text})
             parsed_predictions[qid] = curr_data
             logger.debug(f"question_id = {qid}, input_text = {input_text}, prediction = {ans}")
+
+    # Post-process the predictions
+    batch_answers = [data["prediction"] for data in parsed_predictions.values()]
+    batch_answers = postprocess_batch_vqa_generation_blip2(args.dataset_name, batch_answers)
+    batch_answers = [clean_last_word(ans) for ans in batch_answers]
+
+    # If you intend to update parsed_predictions with cleaned answers
+    for qid, cleaned_ans in zip(parsed_predictions.keys(), batch_answers):
+        parsed_predictions[qid]["prediction"] = cleaned_ans
 
     return parsed_predictions
