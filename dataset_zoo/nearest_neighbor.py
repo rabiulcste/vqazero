@@ -1,20 +1,20 @@
 import json
 import os
+import random
 from typing import Dict, List
 
 import torch
 from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
 
-from utils.logger import Logger
-import random
 from dataset_zoo.common import get_vqa_dataset
 from utils.config import OUTPUT_DIR
+from utils.logger import Logger
 
 THRESHOLD_MAP = {
-    "gqa": 0.7,
-    "aokvqa": 0.7,
-    "okvqa": 0.7,
+    "gqa": 0.6,
+    "aokvqa": 0.6,
+    "okvqa": 0.6,
     "visual7w": 0.6,
     "vqa_v2": 0.6,
 }

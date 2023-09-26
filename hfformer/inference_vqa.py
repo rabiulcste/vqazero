@@ -22,7 +22,7 @@ from evals.answer_postprocess_vicuna_llm import AnswerPostProcessLLM
 from evals.vicuna_llm_evals import extract_answers_from_predictions_vicunallm
 from evals.vqa_accuracy import eval_aokvqa, eval_gqa, eval_visual7w, eval_vqa
 from utils.globals import MODEL_CLS_INFO, VQA_PROMPT_COLLECTION
-from utils.helpers import singularize_key, update_configs
+from utils.helpers import update_configs
 from utils.logger import Logger
 from vqa_zero.caption_generation import CaptionGenerator, PromptCapGenerarator
 from vqa_zero.inference_utils import (get_output_dir_path,
@@ -36,37 +36,33 @@ set_seed(42)
 logger = Logger(__name__)
 
 
-def build_predictions_output_directory(args, **kwargs):
-    output_dir = get_output_dir_path(args)
-    output_dir = os.path.join(output_dir, kwargs.get("identifier", ""))
-
-    if args.dataset_name == "vqa_v2":
-        output_dir = os.path.join(output_dir, f"chunk{args.chunk_id}")
-
-    return output_dir
-
-
-def save_and_evaluate_predictions(dataset_name, args, output_dir, predictions):
+def save_and_evaluate_predictions(args, output_dir, predictions, vicuna_ans_parser=False):
+    multiple_choice = args.task_type == "multiple_choice"
     dataset_eval_mapping = {
         "okvqa": (save_vqa_answers, eval_vqa),
-        "vqa_v2": (save_vqa_answers_chunked, eval_vqa),  # eval_vqa might not work for vqa_v2 because of chunking
+        "vqa_v2": (save_vqa_answers, eval_vqa),  # eval_vqa might not work for vqa_v2 because of chunking
         "gqa": (None, eval_gqa),
-        "visual7w": (None, lambda args, dir: eval_visual7w(args, dir, predictions, multiple_choice=True)),
+        "visual7w": (
+            None,
+            lambda args, dir, parser: eval_visual7w(
+                args, dir, predictions, multiple_choice=multiple_choice, vicuna_ans_parser=parser
+            ),
+        ),
         "aokvqa": (
             None,
-            lambda args, dir: eval_aokvqa(
-                args, dir, predictions, True if args.task_type == "multiple_choice" else False
+            lambda args, dir, parser: eval_aokvqa(
+                args, dir, predictions, multiple_choice=multiple_choice, vicuna_ans_parser=parser
             ),
         ),
     }
 
-    save_func, eval_func = dataset_eval_mapping.get(dataset_name, (None, None))
+    save_func, eval_func = dataset_eval_mapping.get(args.dataset_name, (None, None))
 
     if save_func:
-        save_func(output_dir, args.dataset_name, predictions)
+        save_func(output_dir, args.dataset_name, predictions, args.vicuna_ans_parser)
 
     if eval_func:
-        eval_func(args, output_dir)
+        eval_func(args, output_dir, vicuna_ans_parser)
 
 
 def handle_caption_and_cot_generation(args, prompt_handler):
@@ -94,7 +90,7 @@ def handle_caption_and_cot_generation(args, prompt_handler):
             cot_gen.generate_chain_of_thought_rationale(prompt_handler, args.split)
 
 
-def run_vqa_inference(args):
+def perform_vqa_inference(args):
     if args.vqa_format not in ["standard_vqa", "caption_vqa", "cot_vqa"]:
         raise NotImplementedError(
             f"Provided VQA format {args.vqa_format} is either not implemented yet or invalid argument provided."
@@ -160,7 +156,7 @@ def run_vqa_inference(args):
 
     predictions = {}
     for batch in tqdm(dataloader, desc="Batch"):
-        prompt = batch["prompted_questions"]
+        prompt = batch["prompted_question"]
 
         if args.blind:  # zero out each images pixels, note that images are list of images
             images = [TF.to_tensor(img) * 0 for img in images]
@@ -177,6 +173,9 @@ def run_vqa_inference(args):
                 no_repeat_ngram_size=args.no_repeat_ngram_size,
             )
             generated_outputs = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
+            if processor is not None and processor.padding_side == "left":
+                generated_ids = generated_ids[:, batch["input_ids"].shape[1] :]
+                generated_outputs = [processor.post_process_generation(gt) for gt in generated_outputs]
 
         elif args.model_name == "kosmos2":
             generated_ids = model.generate(
@@ -185,17 +184,14 @@ def run_vqa_inference(args):
                 attention_mask=batch["attention_mask"][:, :-1].to("cuda"),
                 img_features=None,
                 img_attn_mask=batch["img_attn_mask"][:, :-1].to("cuda"),
-                use_cache=True,
-                max_new_tokens=150,
+                max_new_tokens=args.max_length,
+                length_penalty=args.length_penalty,
+                num_beams=args.num_beams,
             )
+            generated_ids = generated_ids[:, batch["input_ids"].shape[1] - 1 :]
             generated_texts = processor.batch_decode(generated_ids, skip_special_tokens=True)
             generated_outputs, entities_list = zip(*[processor.post_process_generation(gt) for gt in generated_texts])
-
         else:
-            # inputs = processor(images=images, text=prompt, padding=True, return_tensors="pt").to(
-            #     model.device, torch.bfloat16
-            # )
-            # print(inputs)
             inputs = {
                 "input_ids": batch["input_ids"].to(model.device),
                 "attention_mask": batch["attention_mask"].to(model.device),
@@ -210,10 +206,10 @@ def run_vqa_inference(args):
             )
             generated_outputs = processor.batch_decode(generated_ids, skip_special_tokens=True)
 
-        keys = ["questions", "prompted_questions", "question_ids", "answers"]
+        keys = ["question", "prompted_question", "question_id", "answer"]
         optional_keys = ["reasoning_paths"]
         for i, output in enumerate(generated_outputs):
-            example = {singularize_key(key): batch[key][i] for key in keys}
+            example = {key: batch[key][i] for key in keys}
             example.update(
                 {key: batch[key][i] for key in optional_keys if key in batch}
             )  # Add optional keys if they exist in batch
@@ -222,7 +218,7 @@ def run_vqa_inference(args):
 
         formatted_message_items = [
             f"question = {question}, prediction = {pred}"
-            for question, pred in zip(batch["questions"][-20:], generated_outputs[-20:])
+            for question, pred in zip(batch["question"][-5:], generated_outputs[-5:])
         ]
         formatted_message = "\n".join(formatted_message_items)
         logger.info(formatted_message)
@@ -230,20 +226,28 @@ def run_vqa_inference(args):
     return predictions
 
 
-def run_evaluation(args, predictions, **kwargs):
+def evaluate_predictions(args, predictions, **kwargs):
+    logger.info("Running evaluation...")
     qids = list(predictions.keys())
-    for start_idx in tqdm(range(0, len(qids), args.batch_size), desc="Post-processing generation"):
-        batch_data = [predictions[qid] for qid in qids[start_idx : start_idx + args.batch_size]]
-        batch_data = answer_postprocess_batch(args, batch_data, logger)
-    output_dir = build_predictions_output_directory(args, **kwargs)
-
-    if args.vicuna_ans_parser:
-        answer_extractor = kwargs.get("answer_extractor")
-        predictions = extract_answers_from_predictions_vicunallm(args, predictions, answer_extractor)
+    batch_data = [predictions[qid] for qid in qids]
+    batch_data = answer_postprocess_batch(args, batch_data, logger)
+    output_dir = get_output_dir_path(args, **kwargs)
 
     save_to_json(os.path.join(output_dir, "predictions.json"), predictions)  # for debugging
     save_to_json(os.path.join(output_dir, "configs.json"), vars(args))
-    save_and_evaluate_predictions(args.dataset_name, args, output_dir, predictions)
+    save_and_evaluate_predictions(args, output_dir, predictions)
+
+
+def evaluate_predictions_vicuna(args, **kwargs):
+    logger.info("Running evaluation (vicunallm)...")
+    output_dir = get_output_dir_path(args, **kwargs)
+    fpath = os.path.join(output_dir, "predictions.json")
+    with open(fpath, "r") as f:
+        predictions = json.load(f)
+    answer_extractor = kwargs.get("answer_extractor")
+    predictions = extract_answers_from_predictions_vicunallm(args, predictions, answer_extractor, batch_size=64)
+    save_to_json(fpath, predictions)  # for debugging
+    save_and_evaluate_predictions(args, output_dir, predictions, vicuna_ans_parser=True)
 
 
 def run_inference(args):
@@ -261,37 +265,39 @@ def run_inference(args):
         caption_prompts = VQA_PROMPT_COLLECTION[args.dataset_name]["caption"]
         question_prompts = VQA_PROMPT_COLLECTION[args.dataset_name]["question"]
         cq_prompts = [f"{q},{c}" for q in question_prompts for c in caption_prompts]
-        all_prompts = cq_prompts if args.vqa_format == "caption_qa" else question_prompts
+        all_prompts = cq_prompts if args.vqa_format == "caption_vqa" else question_prompts
 
     logger.info(f"Total prompts: {len(all_prompts)} will be evaluated.")
-
-    answer_extractor = None
-    if args.vicuna_ans_parser:
-        language_model_name = "lmsys/vicuna-13b-v1.5"
-        answer_extractor = AnswerPostProcessLLM(language_model_name=language_model_name, device="cuda")
-        answer_extractor.load_pretrained_model_tokenizer()
-        answer_extractor._load_in_context_examples(args.dataset_name, "llava")
 
     for prompt_name in all_prompts:
         args.prompt_name = prompt_name
         logger.info(f'Selected prompt name :"{args.prompt_name}"')
-
-        output_dir = get_output_dir_path(args)
-        fpath = os.path.join(output_dir, "result_meta.json")
-        N = 7  # set number of days to update the cache
+        fpath = os.path.join(get_output_dir_path(args), "result_meta.json")
         if not args.overwrite_output_dir and os.path.exists(fpath):
-            file_mod_time = os.path.getmtime(fpath)
-            current_time = time.time()
-            n_days_in_seconds = N * 24 * 60 * 60
-            if current_time - file_mod_time < n_days_in_seconds:
-                logger.info(f"File {fpath} already exists. Skipping inference.")
-                continue
+            logger.info(f"File {fpath} already exists. Skipping inference.")
+            continue
 
         args = update_configs(args)
-        predictions = run_vqa_inference(args)
-        run_evaluation(args, predictions, answer_extractor=answer_extractor)
+        predictions = perform_vqa_inference(args)
+        evaluate_predictions(args, predictions)
         args = update_configs(args)
 
         # clean up GPU memory
         torch.cuda.empty_cache()  # Release unused GPU memory
         gc.collect()  # Trigger Python garbage collection
+
+    if args.vicuna_ans_parser:
+        language_model_name = "lmsys/vicuna-7b-v1.5"
+        answer_extractor = AnswerPostProcessLLM(language_model_name=language_model_name, device="cuda")
+        answer_extractor.load_pretrained_model_tokenizer()
+        ctx_model_name = "opt" if "opt" in args.model_name else "llava"
+        answer_extractor._load_in_context_examples(args.dataset_name, ctx_model_name)
+
+        for prompt_name in all_prompts:
+            args.prompt_name = prompt_name
+            fpath = os.path.join(get_output_dir_path(args), "result_meta_vicuna.json")
+            if not args.overwrite_output_dir and os.path.exists(fpath):
+                logger.info(f"File {fpath} already exists. Skipping inference.")
+                continue
+
+            evaluate_predictions_vicuna(args, answer_extractor=answer_extractor)

@@ -70,11 +70,6 @@ def load_aokvqa_dataset_from_json(dataset_name, split, multiple_choice, version=
 
         qa_objects.append(qa_dict)
 
-    if split == "train":
-        random.shuffle(qa_objects)
-        qa_objects = qa_objects[:5000]
-        logger.warning("WARNING: Truncating train dataset to 5000 samples")
-
     logger.info(json.dumps(qa_objects[0], indent=4))
 
     return qa_objects

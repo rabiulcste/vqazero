@@ -6,13 +6,13 @@ import string
 from thefuzz import fuzz
 from tqdm import tqdm
 
+from dataset_zoo.common import load_visual7w_dataset_from_json
 from evals.answer_postprocess import postprocess_batch_vqa_generation_blip2
 from evals.vqa import VQA
 from evals.vqaEval import VQAEval
 from utils.config import VQA_DATASET_DIR
 from utils.logger import Logger
 from vqa_zero.inference_utils import save_to_json
-from dataset_zoo.common import load_visual7w_dataset_from_json
 
 logger = Logger(__name__)
 
@@ -26,9 +26,7 @@ def normalize_string(input_string):
     return input_string
 
 
-
-
-def eval_vqa(args, output_dir: str):
+def eval_vqa(args, output_dir: str, vicuna_ans_parser=False):
     # create vqa object and vqaRes object
     res_file = os.path.join(output_dir, "annotations+vqa_answers.json")
     vqa = VQA(dataset_name=args.dataset_name)
@@ -70,13 +68,14 @@ def eval_vqa(args, output_dir: str):
         "per_answer_type_accuracy": vqaEval.accuracy["perAnswerType"],
     }
 
-    json_file = os.path.join(output_dir, "result_meta.json")
+    fn_suffx = "result_meta_vicuna.json" if vicuna_ans_parser else "result_meta.json"
+    json_file = os.path.join(output_dir, fn_suffx)
     with open(json_file, "w") as f:
         json.dump(data, f, indent=4)
     logger.info(f"Saved result meta to {json_file}")
 
 
-def eval_gqa(args, output_dir: str, results: dict = None):
+def eval_gqa(args, output_dir: str, vicuna_ans_parser: bool = False, results: dict = None):
     if results is None:
         res_file = os.path.join(output_dir, "predictions.json")
         with open(res_file, "r") as f:
@@ -87,8 +86,8 @@ def eval_gqa(args, output_dir: str, results: dict = None):
     for question_id, result in results.items():
         if result["answer"] == result["prediction"]:
             total_correct += 1
-        else:
-            print(f"prediction = {result['prediction']}, answer = {result['answer']}")
+        # else:
+        #     print(f"prediction = {result['prediction']}, answer = {result['answer']}")
 
         fuzz_score = fuzz.token_set_ratio(result["prediction"], result["answer"], force_ascii=False)
         if fuzz_score > 80:
@@ -107,15 +106,15 @@ def eval_gqa(args, output_dir: str, results: dict = None):
         "vqa_accuracy": overall_acc,
         "fuzzy_accuracy": overall_fuzz_acc,
     }
-    json_file = os.path.join(output_dir, "result_meta.json")
+    fn_suffx = "result_meta_vicuna.json" if vicuna_ans_parser else "result_meta.json"
+    json_file = os.path.join(output_dir, fn_suffx)
     with open(json_file, "w") as f:
         json.dump(data, f, indent=4)
     logger.info(f"Saved result meta to {json_file}")
 
 
-
 # https://github.com/allenai/aokvqa/blob/main/evaluation/eval_predictions.py
-def eval_visual7w(args, output_dir: str, preds, multiple_choice=False, strict=False):
+def eval_visual7w(args, output_dir: str, preds, multiple_choice=False, strict=False, vicuna_ans_parser=False):
     preds = {int(qid): preds[qid]["raw_prediction"] for qid in preds}
     dataset = load_visual7w_dataset_from_json(args.dataset_name, "val")
     if isinstance(dataset, list):
@@ -156,7 +155,8 @@ def eval_visual7w(args, output_dir: str, preds, multiple_choice=False, strict=Fa
     }
 
     logger.info(f"VQA Accuracy: {acc}")
-    json_file = os.path.join(output_dir, "result_meta.json")
+    fn_suffx = "result_meta_vicuna.json" if vicuna_ans_parser else "result_meta.json"
+    json_file = os.path.join(output_dir, fn_suffx)
     with open(json_file, "w") as f:
         json.dump(data, f, indent=4)
     logger.info(f"Saved result meta to {json_file}")
@@ -168,8 +168,8 @@ def _load_aokvqa(aokvqa_dir, split, version="v1p0"):
     return dataset
 
 
-def eval_aokvqa(args, output_dir: str, preds, multiple_choice=False, strict=False):
-    preds = {qid: preds[qid]["prediction"] for qid in preds}  # flamingo_processed_prediction
+def eval_aokvqa(args, output_dir: str, predictions, multiple_choice=False, strict=False, vicuna_ans_parser=False):
+    preds = {qid: predictions[qid]["prediction"] for qid in predictions}  # flamingo_processed_prediction
     dataset = _load_aokvqa(os.path.join(VQA_DATASET_DIR, "datasets", "aokvqa"), "val")
     if isinstance(dataset, list):
         dataset = {dataset[i]["question_id"]: dataset[i] for i in range(len(dataset))}
@@ -186,7 +186,7 @@ def eval_aokvqa(args, output_dir: str, preds, multiple_choice=False, strict=Fals
     # preds = q_id (str) : prediction (str)
 
     acc = []
-
+    wrong_predictions = []
     for q in tqdm(dataset.keys(), desc="Evaluating"):
         if q not in preds.keys():
             acc.append(0.0)
@@ -207,9 +207,7 @@ def eval_aokvqa(args, output_dir: str, preds, multiple_choice=False, strict=Fals
         else:
             gtAcc = []
             direct_answers = postprocess_batch_vqa_generation_blip2(args.dataset_name, direct_answers)
-            direct_answers = [
-                {"answer": da, "answer_id": idx} for idx, da in enumerate(direct_answers)
-            ]
+            direct_answers = [{"answer": da, "answer_id": idx} for idx, da in enumerate(direct_answers)]
 
             for gtAnsDatum in direct_answers:
                 otherGTAns = [item for item in direct_answers if item != gtAnsDatum]
@@ -218,6 +216,9 @@ def eval_aokvqa(args, output_dir: str, preds, multiple_choice=False, strict=Fals
                 gtAcc.append(curr_acc)
             avgGTAcc = float(sum(gtAcc)) / len(gtAcc)
             acc.append(avgGTAcc)
+
+            if avgGTAcc == 0:
+                wrong_predictions.append(predictions[q])
 
             """
             direct_answers = [aokvqa_proc.process_aokvqa(da) for da in direct_answers]
@@ -238,10 +239,16 @@ def eval_aokvqa(args, output_dir: str, preds, multiple_choice=False, strict=Fals
     }
 
     logger.info(f"VQA Accuracy: {acc}")
-    json_file = os.path.join(output_dir, "result_meta.json")
+    fn_suffx = "result_meta_vicuna.json" if vicuna_ans_parser else "result_meta.json"
+    json_file = os.path.join(output_dir, fn_suffx)
     with open(json_file, "w") as f:
         json.dump(data, f, indent=4)
     logger.info(f"Saved result meta to {json_file}")
+
+    wrong_predictions_file = os.path.join(output_dir, "wrong_predictions.json")
+    with open(wrong_predictions_file, "w") as f:
+        json.dump(wrong_predictions, f, indent=4)
+    logger.info(f"Saved incorrect predictions to {wrong_predictions_file}")
 
 
 def eval_winoground(args, output_dir: str, predictions, template_expr=""):

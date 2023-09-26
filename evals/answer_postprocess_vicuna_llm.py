@@ -152,11 +152,8 @@ class AnswerPostProcessLLM:
         Returns:
             A list of lists, where each sub-list contains descriptive tags for the corresponding image.
         """
-
         prompt_length = input_ids.shape[-1]
-
-        # Generate output for all prompts
-        model_output = self.model.generate(
+        generated_ids = self.model.generate(
             input_ids,
             max_length=prompt_length + max_length,
             do_sample=True,
@@ -164,8 +161,7 @@ class AnswerPostProcessLLM:
             temperature=0.8,
             num_return_sequences=num_return_sequences,
         )
-
-        # Decode the output
-        generated_outputs = self.tokenizer.batch_decode(model_output, skip_special_tokens=True)
+        generated_ids = generated_ids[:, prompt_length:]
+        generated_outputs = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
 
         return generated_outputs

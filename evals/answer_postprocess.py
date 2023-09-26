@@ -2,8 +2,8 @@ import json
 import re
 import string
 from typing import List
+from functools import reduce
 
-import spacy
 
 dont_change_list = ["left"]
 
@@ -46,9 +46,11 @@ class VQAAnswerProcessor:
     """Processor for VQA answer strings."""
 
     def __init__(self):
+        import spacy
+        spacy.prefer_gpu()
         self.lemmatizer = spacy.load("en_core_web_sm", disable=["parser", "ner"])
 
-    def process_standard(self, answers: List[str], questions=None):
+    def process_okvqa(self, answers: List[str], questions=None):
         if questions is None:
             questions = [""] * len(answers)
         answers = [self.remove_punctuation(answer) for answer in answers]
@@ -60,35 +62,14 @@ class VQAAnswerProcessor:
         lemmatized_answers = [answer.lower() for answer in lemmatized_answers]
         return lemmatized_answers
 
-    def process_aokvqa_batch(self, predictions: List[str]):
-        predictions = [prediction.lower() for prediction in predictions]
+    def process_standard(self, predictions: List[str]):
         predictions = [self.fix_prefix(prediction) for prediction in predictions]
         predictions = [processDigitArticle(pred) for pred in predictions]
-
-        # predictions = self.lemmatize(predictions)
         predictions = [input_string.strip(string.punctuation) for input_string in predictions]  # remove punctuation
         predictions = [input_string.strip() for input_string in predictions]  # remove leading and trailing whitespaces
+        predictions = [prediction.lower() for prediction in predictions]
+
         return predictions
-
-    def process_aokvqa(self, prediction: str):
-        prediction = prediction.lower()
-        prediction = self.fix_prefix(prediction)
-        prediction = self.remove_articles(prediction)
-        prediction = self.lemmatize([prediction])[0]
-        prediction = prediction.strip(string.punctuation)  # remove punctuation
-        prediction = prediction.strip()  # remove leading and trailing whitespaces
-        return prediction
-
-    def process_gqa(self, answers: List[str], questions=None):
-        if questions is None:
-            questions = [""] * len(answers)
-        answers = [self.remove_punctuation(answer) for answer in answers]
-        answers = [self.fix_prefix(answer) for answer in answers]
-        answers = [self.remove_articles(answer) for answer in answers]
-        answers = self.remove_last_noun_from_answer_if_matches_question_batch(answers, questions)
-        answers = [answer.strip() for answer in answers]
-        answers = [answer.lower() for answer in answers]
-        return answers
 
     @staticmethod
     def remove_punctuation(word):
@@ -114,7 +95,7 @@ class VQAAnswerProcessor:
     def lemmatize(self, answers):
         lemmatized_answers = []
         dont_change_set = set(dont_change_list)
-        for doc in self.lemmatizer.pipe(answers, batch_size=64, n_process=-1):
+        for doc in self.lemmatizer.pipe(answers, n_process=-1):
             words = []
             for token in doc:
                 if token.pos_ in ["NOUN", "VERB"] and token.text not in dont_change_set:
@@ -174,12 +155,10 @@ answer_processor = VQAAnswerProcessor()
 
 
 def postprocess_batch_vqa_generation_blip2(dataset_name: str, predictions: List[str], questions=None) -> str:
-    if dataset_name == "aokvqa":
-        predictions = answer_processor.process_aokvqa_batch(predictions)
-    elif dataset_name == "gqa":
-        predictions = answer_processor.process_gqa(predictions, questions)
+    if dataset_name == "okvqa":
+        predictions = answer_processor.process_okvqa(predictions, questions)
     else:
-        predictions = answer_processor.process_standard(predictions, questions)
+        predictions = answer_processor.process_standard(predictions)
 
     return predictions
 
@@ -265,13 +244,16 @@ def answer_postprocess_batch(args, batch, logger):
         if "rationale" in args.prompt_name and "iterative" not in args.prompt_name:
             output = [extract_answer_from_cot(prediction) for prediction in output]
 
-        logger.debug(f"RAW PREDICTION: {json.dumps(output, indent=2)}")
+        partitions = [". ", "Q: ", "Question: "]
         if args.model_name in ["kosmos2", "opt27b", "opt67b"]:
             questions = [re.sub("^<grounding> ", "", q) for q in questions]
-            output = [re.split(r"[\n.]", o[len(q) :])[0] for q, o in zip(questions, output)]
+            output = [re.split(r"[\n.]", o)[0] for q, o in zip(questions, output)]
+            output = [
+                reduce(lambda txt, p: txt.partition(p)[0], partitions, text)
+                for text in output
+            ]
             output = [o.strip() for o in output]
 
-        # update the batch with the new output, batch is a list of dicts
         for i, data in enumerate(batch):
             data["raw_prediction"] = output[i]
 

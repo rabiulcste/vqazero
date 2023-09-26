@@ -56,6 +56,25 @@
                 "Input: What is the man in the blue shirt attempting to do? He is attempting to cross the road. Short answer: cross road",
                 "Input: Why is the pipe on the back of the truck? it is being transported to a job site. Short answer: transport"
             ]
+        },
+        "vqa_v2": {
+            "io_structure": {
+                "input_keys": "Input",
+                "output_keys": "Short answer"
+            },
+            "samples": [
+                "Input: What is the airplane flying above? The airplane is flying above an ocean. Short answer: ocean",
+                "Input: Is the shape of the bottle the same as that of the cake? No, the shape of the bottle is not the same as that of the cake. Short answer: no",
+                "Input: What is the girl in front of? The girl is standing in front of a traffic sign. Short answer: traffic sign",
+                "Input: Which side of the image is the beige car on? The beige car is on the left side of the image. Short answer: left",
+                "Input: What is the fruit that is green called? The fruit that is green is peer. Short answer: peer",
+                "Input: Do the sneakers look blue and comfortable? Yes, the sneakers appear to be blue and comfortable. Short answer: yes",
+                "Input: What wears the shoe? A pitcher wears the shoe. Short answer: pitcher",
+                "Input: What do you think hangs above the counter top? A banana hangs above the counter top. Short answer: banana",
+                "Input: On which side is the large microwave? The large microwave is on the left side of the kitchen. Short answer: left",
+                "Input: What is the man in the blue shirt attempting to do? He is attempting to cross the road. Short answer: cross road",
+                "Input: Why is the pipe on the back of the truck? it is being transported to a job site. Short answer: transport"
+            ]
         }
     },
     "opt": {

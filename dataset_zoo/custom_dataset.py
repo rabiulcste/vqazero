@@ -1,7 +1,6 @@
 import json
 import os
 import random
-from collections import defaultdict
 from string import punctuation
 from typing import Dict, List, Union
 
@@ -11,8 +10,10 @@ from torch.utils.data import Dataset
 from tqdm import tqdm
 
 from dataset_zoo.common import get_vqa_dataset
-from utils.config import OUTPUT_DIR, VQA_DATASET_DIR
+from utils.config import OUTPUT_DIR
+from utils.handler import PromptingHandler
 from utils.logger import Logger
+from vqa_zero.inference_utils import get_prompt_template_handler
 
 logger = Logger(__name__)
 
@@ -20,7 +21,15 @@ random.seed(42)
 
 
 class VQADataset(Dataset):
-    def __init__(self, config, dataset_name: str, split: str = "val", processor=None, prompt_handler=None, **kwargs):
+    def __init__(
+        self,
+        config,
+        dataset_name: str,
+        split: str = "val",
+        processor=None,
+        prompt_handler: Union[PromptingHandler, None] = None,
+        **kwargs,
+    ):
         self.config = config
         self.split = split
         self.dataset_name = dataset_name
@@ -39,29 +48,6 @@ class VQADataset(Dataset):
         self.in_context_provider = None
         if "knn" in self.config.prompt_name:
             self.in_context_provider = IncontextExamplesProvider(self.config)
-
-    def get_image_qa_multiple_choice_dataset(self, split, shuffle=False):
-        dataset_root = "datasets"
-        fname = os.path.join(VQA_DATASET_DIR, dataset_root, self.dataset_name, "dataset.json")
-        dataset = json.load(open(fname, "r"))
-        dataset_split = defaultdict(list)
-        for img in dataset["images"]:
-            dataset_split[img["split"]].append(img)
-
-        dataset = {}
-        for i, img in enumerate(dataset_split[split]):
-            for pair in img["qa_pairs"]:
-                qa_obj = {}
-                qa_obj["image_id"] = pair["image_id"]
-                qa_obj["question"] = pair["question"]
-                qa_obj["question_id"] = pair["qa_id"]
-                qa_obj["answer"] = pair["answer"]
-                qa_obj["mc"] = [pair["answer"]] + pair["multiple_choices"]
-                if shuffle:
-                    random.shuffle(qa_obj["mc"])
-                qa_obj["mc_selection"] = qa_obj["mc"].index(pair["answer"])
-                dataset[qa_obj["question_id"]] = qa_obj
-        return dataset
 
     def get_cached_context_file_path(self, split) -> str:
         required_args = [
@@ -102,7 +88,6 @@ class VQADataset(Dataset):
                 f"--model_name {self.config.model_name} --vqa_format caption_qa "
                 f"--prompt_name {self.config.prompt_name}"
             )
-        logger.info(f"Loading prompted captions from {fname}")
         with open(fname, "r") as f:
             prompted_captions = json.load(f)
         logger.info(f"Loaded prompted captions from {fname}")
@@ -158,20 +143,23 @@ class VQADataset(Dataset):
             # TODO: this only works for standard-qa setting
             if self.additional_context_data:
                 additional_context_str = self.load_cached_context_data_by_ids(str(question_id))
+                if additional_context_str[-1] != ".":
+                    additional_context_str += "."
                 context_data_key = "rationale" if self.config.vqa_format == "cot_qa" else "caption"
                 inp.update({context_data_key: additional_context_str})
 
             prompted_question = self.prompt_handler.generic_prompting_handler_for_vqa(inp)
 
             if self.in_context_provider is not None:
-                support_examples = self.in_context_provider.get_support_examples_by_question_id(question_id)
-                prompted_question = f"{support_examples} {prompted_question}"
+                prompted_question = self.in_context_provider.get_support_examples_by_question_id(
+                    question_id, prompted_question
+                )
 
             if "opt" in self.config.model_name:
                 prompted_question = prompted_question.replace("\n", " ")
 
-            if "kosmos" in self.config.model_name:
-                prompted_question = f"<grounding> {prompted_question}"
+            # if "kosmos" in self.config.model_name:
+            #     prompted_question = f"<grounding> {prompted_question}"
 
             prompted_question = prompted_question.strip()
             data.update({"prompted_question": prompted_question})
@@ -218,14 +206,18 @@ class IncontextExamplesProvider:
     def __init__(self, config):
         self.config = config
         self.split = "train"
-        if "," in config.prompt_name:
-            self.prompt_name = config.prompt_name.split(",")[1]
-        else:
-            self.prompt_name = config.prompt_name
         self.dataset_name = config.dataset_name
         self.vqa_format = config.vqa_format
+        prompt_handler, _ = get_prompt_template_handler(config, config.prompt_name)
+        if not isinstance(config.prompt_name, list):
+            self.fewshot_prompt_handler = prompt_handler
+            context_prompt_name = None
+        else:
+            self.fewshot_prompt_handler = prompt_handler[0]
+            context_prompt_name = prompt_handler[1].prompt_name
+
         self.support_data_dict = self.get_support_data_dict(
-            config.dataset_name, self.split, self.prompt_name, config.task_type == "multiple_choice"
+            config.dataset_name, self.split, config.task_type == "multiple_choice", context_prompt_name
         )
         self.nearest_neighbor_ids = self.load_cached_nearest_neighbor_ids(config.dataset_name)
 
@@ -243,11 +235,15 @@ class IncontextExamplesProvider:
         return nearest_neighbor_ids
 
     def get_support_data_dict(self, dataset_name: str, split: str, multiple_choice: bool, prompt_name: str):
+        logger.info(
+            f"Loading support data for name = {dataset_name}, split = {split}, prompt = {prompt_name} and multiple_choice = {multiple_choice}"
+        )
         exemplar_dataset = get_vqa_dataset(dataset_name, split, multiple_choice)
 
         context_data = {}
         if self.vqa_format == "caption_qa":
             context_data = load_caption(self.config, split, prompt_name)
+            
         elif self.vqa_format == "cot_qa":
             context_data = load_rationale(self.config, split, prompt_name)
 
@@ -262,7 +258,7 @@ class IncontextExamplesProvider:
             else:
                 question = content["question"]
                 answer = content["answer"]
-
+            answer = answer + "."  # add a period at the end of the answer
             choices = content.get("choice", "")
             if choices:
                 last_choice = choices.pop()
@@ -279,21 +275,7 @@ class IncontextExamplesProvider:
             }
         return support_data_map
 
-    # TODO: this is a hacky way to add the support examples to the data, need to refactor this
-    def format_support_example(self, support_ex, vqa_format):
-        if vqa_format in ["caption_vqa", "standard_vqa"]:
-            context = support_ex.get("context", "")
-            context_str = f"{context} " if context else ""
-            if "short_answer" in self.config.prompt_name:
-                return f"Context: {context_str} Question: {support_ex['question']} {support_ex.get('choice', '')} Short answer: {support_ex['answer']} "
-            else:
-                return f" {context_str} {support_ex['question']} {support_ex.get('choice', '')} {support_ex['answer']}"
-        elif vqa_format == "cot_vqa":
-            return f"Q: {support_ex.get('question', '')} A: {support_ex['context']}"
-        else:
-            raise ValueError(f"Invalid vqa_format: {vqa_format}")
-
-    def get_support_examples_by_question_id(self, question_id):
+    def get_support_examples_by_question_id(self, question_id, prompted_question):
         support_question_ids = self.nearest_neighbor_ids.get(
             question_id, self.nearest_neighbor_ids.get(str(question_id))
         )
@@ -301,31 +283,34 @@ class IncontextExamplesProvider:
             self.support_data_dict.get(qid, self.support_data_dict.get(str(qid))) for qid in support_question_ids
         ]
         logger.debug(f"Support examples: {support_examples}")
-        support_examples = [self.format_support_example(ex, self.vqa_format) for ex in support_examples]
+
+        support_examples = [
+            self.fewshot_prompt_handler.generic_prompting_handler_for_vqa({**ex, "fewshot": True})
+            for ex in support_examples
+        ]
         random.shuffle(support_examples)
-        support_questions = "\n".join(support_examples)
+        support_questions = ""
+        for i, example in enumerate(support_examples, start=1):
+            support_questions += f"{i}. {example}\n"
+        logger.debug(f"Support questions: {support_questions}")
         instructions = "In this task, your goal is to write an answer to a question about the image.\n---\nTo write the answer, here are some sample QA suggestions (not related to the given image):\n"
         # instructions = "In this task, your goal is to write an answer to a question about the image. Here are some suggested QA pairs (not related to the given image)\n"
         support_questions = instructions + support_questions + "\nNow answer the following question about the image."
-        return support_questions
+        prompted_question = f"{support_questions}\n{len(support_examples)+1}. {prompted_question}"
+        return prompted_question
 
 
 def collate_fn_builder(processor=None, tokenizer=None):
     def collate_fn(batch):
-        # get the keys from the first batch element
-        batch_keys = batch[0].keys()
         bkeys = ["question", "answer", "question_id", "prompted_question", "image", "image_path"]
 
-        # Create the batch dictionary
-        processed_batch = {}
-        for bkey in bkeys:
-            if bkey in batch_keys:
-                processed_batch[bkey + "s"] = [example[bkey] for example in batch]
+        # Create the batch dictionary with only the keys present in the first batch element
+        processed_batch = {bkey: [example[bkey] for example in batch] for bkey in bkeys if bkey in batch[0]}
 
         if processor is not None:
             encoding = processor(
-                images=processed_batch["images"],
-                text=processed_batch["prompted_questions"],
+                images=processed_batch["image"],
+                text=processed_batch["prompted_question"],
                 padding=True,
                 return_tensors="pt",
             )
