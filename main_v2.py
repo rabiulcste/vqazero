@@ -22,7 +22,7 @@ parser.add_argument(
     "--gen_model_name",
     type=str,
     default=None,
-    choices=["gpt3", "chatgpt", "flan_t5", "promptcap", "blip2_opt27b", "blip2_opt67b", "blip2_flan_t5xl", "blip2_flan_t5xxl"],
+    choices=["gpt3", "chatgpt", "flan_t5", "promptcap", "blip2_opt27b", "blip2_opt67b", "blip2_flant5xl", "blip2_flant5xxl", "kosmos2"],
     help="choose generator model type",
 )
 parser.add_argument(
