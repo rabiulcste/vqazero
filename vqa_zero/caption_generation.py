@@ -405,8 +405,8 @@ class PromptCapGenerarator(CaptionGenerator):
 
         output = {}
         for batch in tqdm((dataloader), desc="Generating captions"):
-            images = batch["images"]
-            questions = batch["questions"]
+            images = batch["image"]
+            questions = batch["question"]
 
             prompted_questions = [
                 f"Please describe this image according to the given question: {question}" for question in questions
@@ -423,7 +423,7 @@ class PromptCapGenerarator(CaptionGenerator):
             logger.debug(f"Generated captions: {json.dumps(generated_captions)}")
             assert len(generated_captions) == len(questions)
 
-            for question_id, caption in zip(batch["question_ids"], generated_captions):
+            for question_id, caption in zip(batch["question_id"], generated_captions):
                 output[question_id] = caption
 
         self.save(output, split)

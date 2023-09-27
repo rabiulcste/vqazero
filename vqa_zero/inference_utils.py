@@ -181,8 +181,11 @@ def get_output_dir_path(args, **kwargs):
     model_name_str = args.model_name
     if args.gen_model_name and args.model_name != args.gen_model_name:
         model_name_str = f"{model_name_str}+{args.gen_model_name}"
+
     if args.blind:
         model_name_str = f"{model_name_str}+blind"
+
+    few_shot_str = "few_shot" if args.few_shot else ""
 
     prompt_name_str = "/".join(args.prompt_name.split(","))
     path_components = [
@@ -190,6 +193,7 @@ def get_output_dir_path(args, **kwargs):
         "output",
         args.dataset_name,
         model_name_str,
+        few_shot_str,
         args.vqa_format,
         prompt_name_str,
         args.task_type,

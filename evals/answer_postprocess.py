@@ -245,7 +245,7 @@ def answer_postprocess_batch(args, batch, logger):
             output = [extract_answer_from_cot(prediction) for prediction in output]
 
         partitions = [". ", "Q: ", "Question: "]
-        if args.model_name in ["kosmos2", "opt27b", "opt67b"]:
+        if args.model_name in ["kosmos2", "opt27b", "opt67b", "open_flamingo_mpt", "open_flamingo_llama"]:
             questions = [re.sub("^<grounding> ", "", q) for q in questions]
             output = [re.split(r"[\n.]", o)[0] for q, o in zip(questions, output)]
             output = [

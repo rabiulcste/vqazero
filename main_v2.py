@@ -33,6 +33,7 @@ parser.add_argument(
     help="choose generator model type",
 )
 parser.add_argument("--self_consistency", action="store_true", help="Set to run self consistency.")
+parser.add_argument("--few_shot", action="store_true", help="Set to run self consistency.")
 parser.add_argument("--overwrite_output_dir", action="store_true", help="Set to True to overwrite the output file.")
 parser.add_argument("--blind", action="store_true", help="Set to True to run blind where images are zeroed out.")
 parser.add_argument("--vicuna_ans_parser", action="store_true", help="Set to True to run vicuna eval.")
@@ -77,8 +78,6 @@ for cls, models in MODEL_CLS_INFO.items():
             inference_function_map[(cls, model_name, args.dataset_name)] = f"lavis_blip.inference_{fn_suffix}"
         elif cls == "hfformer":
             inference_function_map[(cls, model_name, args.dataset_name)] = f"hfformer.inference_{fn_suffix}"
-        elif cls == "mlfoundations":
-            inference_function_map[(cls, model_name, args.dataset_name)] = f"mlfoundations.inference_{fn_suffix}"
 
 try:
     module_name = inference_function_map[(model_class, args.model_name, args.dataset_name)]

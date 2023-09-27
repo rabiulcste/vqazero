@@ -81,14 +81,19 @@ MODEL_CLS_INFO = {
         "opt27b": {"name": "facebook/opt-2.7b"},
         "opt67b": {"name": "facebook/opt-6.7b"},
         "kosmos2": {"name": "ydshieh/kosmos-2-patch14-224"},
-    },
-    "mlfoundations": {
         "open_flamingo_lamma": {
             "vision_encoder_path": "ViT-L-14",
             "name": "openflamingo/OpenFlamingo-9B",
             "lang_encoder_path": "luodian/llama-7b-hf",
             "tokenizer_path": "luodian/llama-7b-hf",
-        }
+        },
+        "open_flamingo_mpt": {
+            "vision_encoder_path": "ViT-L-14",
+            "name": "openflamingo/OpenFlamingo-3B-vitl-mpt1b",
+            "lang_encoder_path": "anas-awadalla/mpt-1b-redpajama-200b",
+            "tokenizer_path": "anas-awadalla/mpt-1b-redpajama-200b",
+        },
+        "llava": {"name": "liuhaotian/llava-v1-0719-336px-lora-vicuna-13b-v1.3", "base": "lmsys/vicuna-13b-v1.3"},
     },
 }
 
@@ -117,6 +122,8 @@ vqa_prompts = [
     "prefix_null",
     "prefix_question_answer",
     "prefix_question_short_answer",
+]
+chain_of_thought_prompts = [
     "prefix_think_step_by_step_rationale",
     "prefix_instruct_rationale",
 ]
@@ -127,11 +134,17 @@ vqa_fewshot_prompts = [
     "prefix_question_short_answer_knn",
 ]
 
+promptcap_prompts = [
+    "prefix_promptcap",
+]
 caption_prompts = [
     "a_photo_of",
     "prefix_a_photo_of",
     "prefix_promptcap_a_photo_of",
 ]
+caption_prompts += promptcap_prompts
+
+vqa_prompts += chain_of_thought_prompts
 
 VQA_PROMPT_COLLECTION = {
     "okvqa": {"caption": caption_prompts, "question": vqa_prompts + okvqa_prompts},

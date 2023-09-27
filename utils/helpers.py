@@ -1,7 +1,11 @@
+import gc
 import os
 import time
 from collections import Counter
 
+import torch
+
+from utils.globals import VQA_PROMPT_COLLECTION, promptcap_prompts
 from utils.logger import Logger
 from vqa_zero.inference_utils import get_output_dir_path
 
@@ -25,28 +29,27 @@ def update_configs(args):
     }
 
     # Update configs based on model_name
-    if "xxl" in args.model_name:
+    if "xxl" in args.model_name or "kosmos" in args.model_name:
         config_updates["batch_size"] = 32
-
-    if "kosmos" in args.model_name:
-        config_updates.update(
-            {
-                "batch_size": 32,
-                "max_length": 100,
-            }
-        )
 
     # Update configs based on answer parser
     if args.vicuna_ans_parser:
         config_updates.update(
             {
-                "max_length": 50,
+                "max_length": 30,
+            }
+        )
+
+    if "knn" in args.prompt_name:
+        config_updates.update(
+            {
+                "max_length": 10,
             }
         )
 
     # Update configs based on prompt_name
     if "rationale" in args.prompt_name and ("mixer" not in args.prompt_name or "iterative" not in args.prompt_name):
-        config_updates.update({"max_length": 100, "length_penalty": 1.0, "no_repeat_ngram_size": 3})
+        config_updates.update({"max_length": 100, "length_penalty": 1.0, "no_repeat_ngram_size": 3, "batch_size": 32})
 
     if "iterative" in args.prompt_name:
         config_updates.update(
@@ -96,3 +99,23 @@ def get_most_common_item(lst):
         most_common_item = lst[0]
 
     return most_common_item
+
+
+def _get_all_prompts(args):
+    """Utility function to retrieve all prompts."""
+    question_prompts = VQA_PROMPT_COLLECTION[args.dataset_name]["question"]
+    caption_prompts = VQA_PROMPT_COLLECTION[args.dataset_name]["caption"]
+    if args.gen_model_name == "promptcap":
+        caption_prompts = promptcap_prompts
+        
+    return (
+        [f"{q},{c}" for q in question_prompts for c in caption_prompts]
+        if args.vqa_format == "caption_vqa"
+        else question_prompts
+    )
+
+
+def _cleanup():
+    """Utility function to cleanup memory."""
+    torch.cuda.empty_cache()  # Release unused GPU memory
+    gc.collect()  # Trigger Python garbage collection
