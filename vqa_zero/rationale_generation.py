@@ -51,7 +51,6 @@ class ChainOfThoughtGenerator:
         dataset_args = {
             "config": self.args,
             "dataset_name": self.args.dataset_name,
-            # "vis_processors": vis_processors,
             "prompt_handler": prompt_handler,
             "model_name": self.args.gen_model_name,
             "split": split,
@@ -77,9 +76,9 @@ class ChainOfThoughtGenerator:
         success = 0
         output = {}
         for batch in tqdm((dataloader), desc="Generating rationales"):
-            images = batch["images"]
-            questions = batch["questions"]
-            prompt = batch["prompted_questions"]
+            images = batch["image"]
+            questions = batch["question"]
+            prompt = batch["prompted_question"]
             inputs = self.processor(images=images, text=prompt, padding=True, return_tensors="pt").to(
                 self.device, torch.bfloat16
             )
@@ -95,16 +94,16 @@ class ChainOfThoughtGenerator:
             assert len(generated_rationales) == len(questions)
 
             for idx, (question_id, question, rationale) in enumerate(
-                zip(batch["question_ids"], questions, generated_rationales)
+                zip(batch["question_id"], questions, generated_rationales)
             ):
                 prediction = extract_answer_from_cot(rationale)
-                answer = batch["answers"][idx]
+                answer = batch["answer"][idx]
 
                 fuzz_score = fuzz.ratio(answer, prediction)
                 if self.args.vqa_format == "cot_qa" and fuzz_score > 80:
                     output[question_id] = rationale
-                    print(
-                        f"Question: {question} | Rationale: {rationale} | Prediction: {prediction} | Answer: {answer}"
+                    logger.info(
+                        f"Question = {question}, Rationale: {rationale}, Prediction = {prediction}, Answer = {answer}"
                     )
                     success += 1
                 else:
@@ -188,7 +187,7 @@ class ChainOfThoughtGenerator:
         rationale = rationale.replace("To answer the above question, the relevant sentence is:", "")
         rationale = rationale.replace("To answer this question, we should know that", "")
         extracted_answer = extract_answer_from_cot(rationale)
-        # print(f"Rationale: {rationale} | Extracted answer: {extracted_answer}")
+        # logger.info(f"Rationale: {rationale} | Extracted answer: {extracted_answer}")
         if extracted_answer:
             if stragety == "iterative":
                 match = re.search(r"\. (?=[A-Z])", rationale)
@@ -199,7 +198,7 @@ class ChainOfThoughtGenerator:
                 answer_start_index = rationale.rfind(extracted_answer)
                 last_period_index = rationale[:answer_start_index].rfind(".")
                 rationale = rationale[: last_period_index + 1].strip()
-        # print(f"Rationale after removing answer: {rationale}")
+        # logger.info(f"Rationale after removing answer: {rationale}")
         return rationale
 
     def load_by_ids(self, ids: Union[str, List[str]]):

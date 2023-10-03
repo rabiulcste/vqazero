@@ -60,10 +60,18 @@ templates:
 
   96dcb7cc-92d1-446d-87d5-d96e7a8a72c9: !Template
     id: 96dcb7cc-92d1-446d-87d5-d96e7a8a72c9
-    jinja: 'Describe the scene'
+    jinja: 'Describe the scene:'
     metadata: !TemplateMetadata
       choices_in_prompt: false
     name: prefix_describe_the_scene
+
+  a7f6d5e4-3b2a-1c9d-0e8f-9b8a7c6d5f4e: !Template
+    id: a7f6d5e4-3b2a-1c9d-0e8f-9b8a7c6d5f4e
+    jinja: 'Describe this image in detail:'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_describe_the_image
+    author: Rabiul Awal
 
   9e8d7c6b-4a3b-2c1d-0f9e-5a6b4c3d2e1f: !Template
     id: 9e8d7c6b-4a3b-2c1d-0f9e-5a6b4c3d2e1f
@@ -149,7 +157,7 @@ templates:
     id: a3e4fb3f-a3c7-4837-a624-dade9457ef3b
     jinja: |
       {% if question %}
-      Question: {{ question }} Question guided detailed image description: 
+      Question: {{ question }} Describe this image in detail: 
       {% else %}
       {{ caption }}
       {% endif %}

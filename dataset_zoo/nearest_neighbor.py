@@ -77,9 +77,10 @@ def cache_nearest_neighbor_data(dataset_name, multiple_choice=False):
 
     question_list = []
     question_ids = []
-
-    query_dataset = get_vqa_dataset(dataset_name, split="val", multiple_choice=multiple_choice)
-    exemplar_dataset = get_vqa_dataset(dataset_name, split="train", multiple_choice=multiple_choice)
+    val_split = "testdev_bal" if dataset_name == "gqa" else "val"
+    train_split = "train_bal" if dataset_name == "gqa" else "train"
+    query_dataset = get_vqa_dataset(dataset_name, split=val_split, multiple_choice=multiple_choice)
+    exemplar_dataset = get_vqa_dataset(dataset_name, split=train_split, multiple_choice=multiple_choice)
     for idx in range(len(exemplar_dataset)):
         content = exemplar_dataset[idx]
 
