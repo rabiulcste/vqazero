@@ -1,64 +1,91 @@
 import json
 import os
+import time
 
 import numpy as np
 import torch
-from transformers import (AutoModel, AutoModelForCausalLM, AutoTokenizer,
-                          CLIPModel, CLIPProcessor)
+from transformers import (AutoModelForCausalLM, AutoModelForVision2Seq,
+                          AutoProcessor, AutoTokenizer,
+                          Blip2ForConditionalGeneration, Blip2Processor,
+                          T5ForConditionalGeneration, T5Tokenizer)
 
-from utils.config import OUTPUT_DIR, VQA_DATASET_DIR
+from utils.config import HUGGINFACE_HUB_DIR, OUTPUT_DIR, VQA_DATASET_DIR
 from utils.globals import DATASET_CONFIG, MODEL_CLS_INFO
 from utils.handler import PromptingHandler
+from utils.helpers import CustomEncoder
 from utils.logger import Logger
 
 logger = Logger(__name__)
 
 
 # model and inference related methods
-def load_model_and_processors(model_cls_name: str, device):
-    if model_cls_name.startswith("blip"):
-        MODEL_INFO = MODEL_CLS_INFO["lavis"]
-    else:
-        MODEL_INFO = MODEL_CLS_INFO["hfformer"]
+def load_model_and_processors(model_cls_name: str, device, autocast_dtype):
+    model_name = MODEL_CLS_INFO["hfformer"][model_cls_name]["name"]
 
-    if model_cls_name not in MODEL_INFO:
-        raise ValueError(f"Invalid `args.model_name`. Provided: {model_cls_name}")
+    processor, tokenizer = None, None
+    if model_cls_name in ["flant5xl", "flant5xxl"]:
+        tokenizer = T5Tokenizer.from_pretrained(model_name)
+        model = T5ForConditionalGeneration.from_pretrained(model_name, torch_dtype=autocast_dtype, device_map="auto")
 
-    logger.info(f"loading model and processor for `{model_cls_name}`")
-    model_info = MODEL_INFO[model_cls_name]
-    model_name = model_info["name"]
-    model_type = model_info.get("model_type")
+    elif model_cls_name in ["opt27b", "opt67b"]:
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=autocast_dtype, device_map="auto")
+        tokenizer.padding_side = "left"
 
-    if model_cls_name.startswith("blip"):
-        from lavis.models import \
-            load_model_and_preprocess  # this is due to the case that lavis conflict with recent transformers version
+    elif model_cls_name == "kosmos2":
+        model = AutoModelForVision2Seq.from_pretrained(model_name, trust_remote_code=True)
+        processor = AutoProcessor.from_pretrained(model_name, trust_remote_code=True)
+        processor.tokenizer.padding_side = "left"
+        model = model.to(device)
 
-        model, vis_processors, txt_processors = load_model_and_preprocess(
-            name=model_name,
-            model_type=model_type,
-            is_eval=True,
-            device=device,
+    elif model_cls_name in ["open_flamingo_redpajama", "open_flamingo_redpajama_instruct", "open_flamingo_mpt"]:
+        from open_flamingo import create_model_and_transforms
+
+        lang_encoder_path = MODEL_CLS_INFO["hfformer"][model_cls_name]["lang_encoder_path"]
+        tokenizer_path = MODEL_CLS_INFO["hfformer"][model_cls_name]["tokenizer_path"]
+        model, image_processor, tokenizer = create_model_and_transforms(
+            clip_vision_encoder_path="ViT-L-14",
+            clip_vision_encoder_pretrained="openai",
+            lang_encoder_path=lang_encoder_path,
+            tokenizer_path=tokenizer_path,
+            cross_attn_every_n_layers=1,
+            cache_dir=HUGGINFACE_HUB_DIR,  # Defaults to ~/.cache
         )
-        processor = (
-            vis_processors,
-            txt_processors,
-        )  # processor is a tuple of image and text processor for lavis models
-    elif model_cls_name == "clip":
-        model = CLIPModel.from_pretrained(model_name)
-        processor = CLIPProcessor.from_pretrained(model_name)
-    elif model_cls_name.startswith("git"):
-        model = AutoModelForCausalLM.from_pretrained(model_name)
-        processor = AutoProcessor.from_pretrained(model_name, padding_side="left")
-    elif model_cls_name == "ofa_vqa":
-        model = AutoModel.from_pretrained(model_name, use_cache=False)
-        processor = AutoTokenizer.from_pretrained(model_name)
-    else:
-        from transformers import AutoModelForSeq2SeqLM, AutoProcessor
 
-        processor = AutoProcessor.from_pretrained(model_name)
-        model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
-    model = model.to(device)
-    return model, processor
+        # grab model checkpoint from huggingface hub
+        from huggingface_hub import hf_hub_download
+
+        from dataset_zoo.custom_processor import FlamingoProcessor
+
+        checkpoint_path = hf_hub_download("openflamingo/OpenFlamingo-3B-vitl-mpt1b", "checkpoint.pt")
+        model.load_state_dict(torch.load(checkpoint_path), strict=False)
+        model = model.to(device)
+        tokenizer.padding_side = "left"
+        processor = FlamingoProcessor(tokenizer, image_processor, device, autocast_dtype)
+
+    elif model_cls_name == "llava":
+        from dataset_zoo.custom_processor import LlaVaProcessor
+        from LLaVA.llava.mm_utils import (KeywordsStoppingCriteria,
+                                          get_model_name_from_path)
+        from LLaVA.llava.model.builder import load_pretrained_model
+        from LLaVA.llava.utils import disable_torch_init
+
+        disable_torch_init()
+        model_path = os.path.expanduser(model_name)
+        model_name = get_model_name_from_path(model_path)
+        model_name = get_model_name_from_path(model_path)
+        model_base = MODEL_CLS_INFO["hfformer"][model_cls_name]["base"]
+        tokenizer_, model, image_processor, context_len = load_pretrained_model(model_path, model_base, model_name)
+        tokenizer_.padding_side = "left"
+        processor = LlaVaProcessor(tokenizer_, image_processor, model.config.mm_use_im_start_end)
+
+    else:
+        processor = Blip2Processor.from_pretrained(model_name)
+        if "opt" in model_cls_name:
+            processor.tokenizer.padding_side = "left"
+        model = Blip2ForConditionalGeneration.from_pretrained(model_name, torch_dtype=autocast_dtype, device_map="auto")
+
+    return model, processor, tokenizer
 
 
 def get_optimal_batch_size_v2(model, seq_length, batch_size):
@@ -105,11 +132,6 @@ def generate_output_blip(args, model, samples):
                 use_nucleus_sampling=True if args.self_consistency else False,
                 temperature=0.7 if args.self_consistency else 1.0,
             )
-
-
-def get_image_tensors_winoground(example, vis_processors):
-    NUM_IMAGES = 2
-    return [vis_processors["eval"](example[f"image_{i}"].convert("RGB")) for i in range(NUM_IMAGES)]
 
 
 # prompt related methods
@@ -169,6 +191,23 @@ def apply_prompt_to_example_winoground(handler: PromptingHandler, example):
     )
 
 
+def is_vqa_output_cache_exists(args):
+    N = 5
+    output_dir = get_output_dir_path(args)
+
+    fpath = os.path.join(output_dir, "result_meta.json")
+    if not args.overwrite_output_dir and os.path.exists(fpath):
+        file_mod_time = os.path.getmtime(fpath)
+        current_time = time.time()
+        n_days_in_seconds = N * 24 * 60 * 60
+
+        if current_time - file_mod_time < n_days_in_seconds:
+            logger.info(f"File {fpath} already exists. Skipping inference.")
+            return True
+
+    return False
+
+
 def get_output_dir_path(args, **kwargs):
     required_args = [args.dataset_name, args.model_name, args.vqa_format, args.prompt_name]
     if any(val is None for val in required_args):
@@ -205,27 +244,13 @@ def get_output_dir_path(args, **kwargs):
 
     if kwargs.get("identifier"):
         path_components.append(kwargs.get("identifier"))
-        
+
     if args.dataset_name == "vqa_v2" and args.chunk_id is not None:
         path_components.append(f"chunk{args.chunk_id}")
 
     # Join all path components together
     dir_path = os.path.join(*path_components)
     return dir_path
-
-
-class CustomEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if hasattr(obj, "tolist"):  # Convert tensors to lists
-            return obj.tolist()
-        elif hasattr(obj, "name"):  # Convert PyTorch device to its name string
-            return obj.name
-        elif isinstance(obj, type):  # If it's a type/class object
-            return str(obj)
-        elif isinstance(obj, torch.device):  # Handling torch.device objects
-            return str(obj)
-        # You can add more custom handlers here if needed
-        return super().default(obj)
 
 
 def save_to_json(json_path, all_results):
@@ -255,7 +280,7 @@ def save_vqa_answers(output_dir, dataset_name, predictions, vicuna_ans_parser=Fa
         if question_id not in predictions:
             logger.info("warning: missing question_id: %s" % question_id)
             continue
-        
+
         pred_key = "raw_prediction" if dataset_name == "vqa_v2" and not vicuna_ans_parser else "prediction"
         answer = predictions[question_id][pred_key]
         ann["answer"] = answer
@@ -305,3 +330,10 @@ def set_seed(seed_value):
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
     np.random.seed(seed_value)
+
+
+def get_autocast_dtype():
+    """Return the best available dtype for autocasting: bfloat16 if available, else float16."""
+    if torch.cuda.is_bf16_supported():
+        return torch.bfloat16
+    return torch.float16

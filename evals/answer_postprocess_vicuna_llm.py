@@ -58,7 +58,7 @@ class AnswerPostProcessLLM:
                 device_map="auto",
             )
 
-    def _load_in_context_examples(self, dataset_name: str, output_mode: str):
+    def _load_in_context_examples(self, dataset_name: str, output_mode: str, format_type: str):
         fname = os.path.join(
             "/home/mila/r/rabiul.awal/vqazero-private", "evals/demonstrations", "in_context_examples.json"
         )
@@ -68,9 +68,10 @@ class AnswerPostProcessLLM:
 
         prompt_data = data[output_mode][dataset_name]
         self.prompt_data = prompt_data
+        self.format_type = format_type
 
     def _prepare_prompt(self, input_text: str, num_examples_in_task_prompt: int):
-        selected_examples = self.prompt_data["samples"][:num_examples_in_task_prompt]
+        selected_examples = self.prompt_data[self.format_type][:num_examples_in_task_prompt]
         random.shuffle(selected_examples)
 
         prompt_instruction = ""
@@ -156,9 +157,10 @@ class AnswerPostProcessLLM:
         generated_ids = self.model.generate(
             input_ids,
             max_length=prompt_length + max_length,
-            do_sample=True,
-            top_k=40,
-            temperature=0.8,
+            # num_beams=3,
+            # do_sample=True,
+            # top_k=40,
+            # temperature=0.8,
             num_return_sequences=num_return_sequences,
         )
         generated_ids = generated_ids[:, prompt_length:]

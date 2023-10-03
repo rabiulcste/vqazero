@@ -131,7 +131,7 @@ templates:
     jinja: '"{{ caption }}." Is it true about this image? Answer in yes/no.'
     metadata: !TemplateMetadata
       choices_in_prompt: false
-    name: is_it_true_about_image
+    name: is_true_image
     author: Rabiul Awal
 
   4c4c68b8-945f-4d70-b0c4-79929b68f6c1: !Template
@@ -139,7 +139,7 @@ templates:
     jinja: '"{{ caption }}." Is it true about this image?'
     metadata: !TemplateMetadata
       choices_in_prompt: false
-    name: is_it_true_about_image_wo_choices
+    name: is_true_image_wo_choices
     author: Rabiul Awal
 
 
@@ -148,7 +148,7 @@ templates:
     jinja: 'Is it true about this image "{{ caption }}"? Answer in yes/no.'
     metadata: !TemplateMetadata
       choices_in_prompt: false
-    name: is_it_true_about_image_end
+    name: is_true_image_end
     author: Rabiul Awal
 
 
@@ -157,7 +157,7 @@ templates:
     jinja: 'Is it true about this image "{{ caption }}"?'
     metadata: !TemplateMetadata
       choices_in_prompt: false
-    name: is_it_true_about_image_wo_choices_end
+    name: is_true_image_wo_choices_end
     author: Rabiul Awal
 
 
@@ -182,7 +182,16 @@ templates:
     jinja: 'Answer the following yes/no question. {{ question }}'
     metadata: !TemplateMetadata
       choices_in_prompt: false
-    name: prefix_answer_the_following_yes_no_question
+    name: prefix_following_yn_qa
+    author: Rabiul Awal
+
+
+  a9e76320-7b22-4b3e-a1e5-6cde7c8e92d2: !Template
+    id: a9e76320-7b22-4b3e-a1e5-6cde7c8e92d2
+    jinja: 'Question: {{ question }} Answer: Yes or no?'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_yn_qa
     author: Rabiul Awal
 
   47b3a526-3d3f-4419-bf06-12c8e1cb2a6b: !Template
@@ -190,7 +199,7 @@ templates:
     jinja: '{{ question }}'
     metadata: !TemplateMetadata
       choices_in_prompt: false
-    name: prefix_convert_question_to_binary_vqa
+    name: prefix_null_qa
     author: Rabiul Awal
 
 

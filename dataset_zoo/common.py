@@ -1,14 +1,13 @@
 import json
 import os
 import random
-from collections import defaultdict
+from collections import Counter, defaultdict
 from typing import Dict, List
 
 from tqdm import tqdm
 
 from utils.config import COCO_DATASET_DIR, VQA_DATASET_DIR
 from utils.globals import DATASET_CONFIG
-from utils.helpers import get_most_common_item
 from utils.logger import Logger
 
 logger = Logger(__name__)
@@ -33,6 +32,20 @@ def get_vqa_dataset(dataset_name: str, split: str, multiple_choice: bool = False
 
 def get_coco_path_image_id(coco_dir, split, image_id):
     return os.path.join(coco_dir, f"{split}2017", f"{image_id:012}.jpg")
+
+
+def get_most_common_item(lst):
+    frequencies = Counter(lst)
+    most_common = frequencies.most_common(1)
+
+    if len(most_common) > 0:
+        # Return the most common item
+        most_common_item = most_common[0][0]
+    else:
+        # Return the first item in the list
+        most_common_item = lst[0]
+
+    return most_common_item
 
 
 def load_aokvqa_dataset_from_json(dataset_name, split, multiple_choice, version="v1p0") -> List[Dict]:

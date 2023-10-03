@@ -126,6 +126,11 @@ templates:
     metadata: !TemplateMetadata
       choices_in_prompt: false
     name: prefix_an_image_in_which
-
-
   
+  5f5e7b5d-bccb-4e52-8e01-7c5e9c9d5232: !Template
+    id: 5f5e7b5d-bccb-4e52-8e01-7c5e9c9d5232
+    jinja: 'Please describe this image according to the given question: {{ question }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_promptcap
+    author: Rabiul Awal

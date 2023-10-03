@@ -6,19 +6,10 @@ templates:
   edbf6b25-6c34-4d69-a1c2-1cfaf4227888: !Template
     id: edbf6b25-6c34-4d69-a1c2-1cfaf4227888
     jinja: |
-      {% if caption  %} {{ caption }} {% endif %} Please answer the following question. {{ question }} {% if choice  %} {{ choice }} {% endif %}
+      {% if caption  %} {{ caption }} {% endif %} Please answer the following question: {{ question }} {% if choice  %} Choices: {{ choice }} {% endif %}
     metadata: !TemplateMetadata
       choices_in_prompt: false
     name: prefix_answer_the_following_question
-    author: Rabiul Awal
-
-  0a85080c-0bc0-44f2-acd2-b1d07669b31c: !Template
-    id: 0a85080c-0bc0-44f2-acd2-b1d07669b31c
-    jinja: |
-      {% if caption  %} {{ caption }} {% endif %} Please answer the following question. {{ question }} {% if choice  %} {{ choice }} {% endif %}
-    metadata: !TemplateMetadata
-      choices_in_prompt: false
-    name: prefix_answer_the_following_question_knn
     author: Rabiul Awal
 
 
@@ -40,7 +31,8 @@ templates:
 
   7d5a4e46-7a16-4bc3-b7e4-70a0a7f23d3f: !Template
     id: 7d5a4e46-7a16-4bc3-b7e4-70a0a7f23d3f
-    jinja: '{{ caption }} {{ question }} {{ choice }}'
+    jinja: |
+      {% if caption -%} {{ caption }} {% endif -%} {{ question }} {% if choice -%} Choices: {{ choice }} {% endif -%}
     metadata: !TemplateMetadata
       choices_in_prompt: false
     name: prefix_null
@@ -49,7 +41,11 @@ templates:
   f68d4131-6ce2-4f3b-bd22-6a579a55e955: !Template
     id: f68d4131-6ce2-4f3b-bd22-6a579a55e955
     jinja: |
-        {{ caption }} Question: {{ question }} {% if choice %} {{ choice }} {% endif %} Answer:
+      {% if fewshot == True -%}
+      {% if caption -%} {{ caption }} {% endif -%} Question: {{ question }} {% if choice -%} Select the correct one from choices: {{ choice }} {% endif -%} Answer: {{ answer }}
+      {% else -%}
+      {% if caption -%} {{ caption }} {% endif -%} Question: {{ question }} {% if choice -%} Select the correct one from choices: {{ choice }} {% endif -%} Answer:
+      {% endif %}
     metadata: !TemplateMetadata
       choices_in_prompt: false
     name: prefix_question_answer
@@ -58,7 +54,11 @@ templates:
   10e1917b-36e2-4d43-b2b2-1dbb3cc03133: !Template
     id: 10e1917b-36e2-4d43-b2b2-1dbb3cc03133
     jinja: |
-        {{ caption }} Question: {{ question }} {% if choice %} {{ choice }} {% endif %} Short answer:    
+      {% if fewshot == True -%}
+      {% if caption -%} {{ caption }} {% endif -%} Question: {{ question }} {% if choice -%} Choices: {{ choice }} {% endif -%} Short answer: {{ answer }}
+      {% else -%}
+      {% if caption -%} {{ caption }} {% endif -%} Question: {{ question }} {% if choice -%} Choices: {{ choice }} {% endif -%} Short answer:
+      {% endif %}
     metadata: !TemplateMetadata
       choices_in_prompt: false
     name: prefix_question_short_answer
@@ -67,6 +67,9 @@ templates:
   3c528013-b140-4e79-ac06-8966ff91357c: !Template
     id: 3c528013-b140-4e79-ac06-8966ff91357c
     jinja: |
+        {% if caption %}
+        {{ caption }}
+        {% endif %}
         Q: {{ question }}
         {% if choice %}
         {{ choice }}
@@ -117,43 +120,34 @@ templates:
   3b0b0b1d-1b1f-4b0f-8b1f-1b1f4b0f8b1f: !Template
     id: 3b0b0b1d-1b1f-4b0f-8b1f-1b1f4b0f8b1f
     jinja: |
-        {% if caption  %} {{ caption }} {% endif %} Your task is to answer a knowledge based question. Question: {{ question }} {% if choice %} {{ choice }} {% endif %} Short answer:
+      {% if fewshot == True -%}
+      {% if caption -%} {{ caption }} {% endif -%} Question: {{ question }} {% if choice -%} Choices: {{ choice }} {% endif -%} Short answer: {{ answer }}
+      {% else -%}
+      {% if caption -%} {{ caption }} {% endif -%} Your task is to answer a knowledge based question. Question: {{ question }} {% if choice -%} Choices: {{ choice }} {% endif -%} Short answer:
+      {% endif %}
     metadata: !TemplateMetadata
       choices_in_prompt: false
     name: prefix_your_task_knowledge_qa_short_answer
 
-
   aac913af-4369-488a-8ea4-a905068cb755: !Template
     id: aac913af-4369-488a-8ea4-a905068cb755
     jinja: |
-        {% if caption  %} {{ caption }} {% endif %} Your task is to answer a knowledge based question. Question: {{ question }} {% if choice %} {{ choice }} {% endif %} Answer:
+      {% if fewshot == True -%}
+      {% if caption -%} {{ caption }} {% endif -%} Question: {{ question }} {% if choice -%} Choices: {{ choice }} {% endif -%} Answer: {{ answer }}
+      {% else -%}
+      {% if caption -%} {{ caption }} {% endif -%} Your task is to answer a knowledge based question. Question: {{ question }} {% if choice -%} Choices: {{ choice }} {% endif -%} Answer:
+      {% endif %}
     metadata: !TemplateMetadata
       choices_in_prompt: false
     name: prefix_your_task_knowledge_qa_answer
 
-
-  fc517819-c03a-45f3-8987-acd9626e921f: !Template
-    id: fc517819-c03a-45f3-8987-acd9626e921f
-    jinja: |
-        {% if caption  %} {{ caption }} {% endif %} Your task is to answer a knowledge based question. Question: {{ question }} {% if choice %} {{ choice }} {% endif %} Answer:
-    metadata: !TemplateMetadata
-      choices_in_prompt: false
-    name: prefix_your_task_knowledge_qa_answer_knn
-
-  a5276555-910d-4c61-b86b-20bf6a7efa48: !Template
-    id: a5276555-910d-4c61-b86b-20bf6a7efa48
-    jinja: |
-        {% if caption  %} {{ caption }} {% endif %} Your task is to answer a knowledge based question. Question: {{ question }} {% if choice %} {{ choice }} {% endif %} Short answer:
-    metadata: !TemplateMetadata
-      choices_in_prompt: false
-    name: prefix_your_task_knowledge_qa_short_answer_knn
-
-
   5b5baf0-07ff-4760-926d-79efb7388780: !Template
     id: 5b5baf0-07ff-4760-926d-79efb7388780
     jinja: |
+      {% if caption -%} {{ caption }} {% endif -%}
       Answer the following question by reasoning step-by-step.
       Q: {{ question }}
+      {% if choice -%} Choices: {{ choice }} {% endif -%}
       A: 
     metadata: !TemplateMetadata
       choices_in_prompt: false
@@ -165,6 +159,7 @@ templates:
     jinja: |
       Answer the following question by reasoning step-by-step.
       Q: {{ question }} 
+      {% if choice -%} Choices: {{ choice }} {% endif -%}
       A: {{ rationale }} Therefor, the final answer is
     metadata: !TemplateMetadata
       choices_in_prompt: false
@@ -184,55 +179,30 @@ templates:
     name: prefix_caption_cot_mixer
     author: Rabiul Awal
 
-  fafca6a6-74c0-461a-b584-45813ada2a0c: !Template
-    id: fafca6a6-74c0-461a-b584-45813ada2a0c
-    jinja: |
-      Answer the following question by reasoning step-by-step.
-      Q: {{ question }}
-      A: 
-    metadata: !TemplateMetadata
-      choices_in_prompt: false
-    name: prefix_instruct_rationale_knn
-    author: Rabiul Awal
 
   6379cbd5-f3c5-484f-833a-75e33b863b0b: !Template
     id: 6379cbd5-f3c5-484f-833a-75e33b863b0b
     jinja: |
+      {% if caption -%} {{ caption }} {% endif -%}
       Q: {{ question }}
+      {% if choice -%} Choices: {{ choice }} {% endif -%}
       A: Let's think step by step.
     metadata: !TemplateMetadata
       choices_in_prompt: false
     name: prefix_think_step_by_step_rationale
     author: Rabiul Awal
 
-  f40db9db-d375-4049-94ed-63f1fbefdc4a: !Template
-    id: f40db9db-d375-4049-94ed-63f1fbefdc4a
-    jinja: |
-      Q: {{ question }}
-      A: Let's think step by step.
-    metadata: !TemplateMetadata
-      choices_in_prompt: false
-    name: prefix_think_step_by_step_rationale_knn
-    author: Rabiul Awal
 
   4a6caad7-c582-44c4-b4bd-d01018fe7b53: !Template
     id: 4a6caad7-c582-44c4-b4bd-d01018fe7b53
     jinja: |
+      {% if caption -%} {{ caption }} {% endif -%}
       Q: {{ question }}
+      {% if choice -%} Choices: {{ choice }} {% endif -%}
       Give the rationale before answering.
     metadata: !TemplateMetadata
       choices_in_prompt: false
     name: prefix_rationale_before_answering
-    author: Rabiul Awal
-
-  32cfce80-6ed1-41f8-b79b-c759367b74b8: !Template
-    id: 32cfce80-6ed1-41f8-b79b-c759367b74b8
-    jinja: |
-      Q: {{ question }}
-      Give the rationale before answering.
-    metadata: !TemplateMetadata
-      choices_in_prompt: false
-    name: prefix_rationale_before_answering_knn
     author: Rabiul Awal
 
 
@@ -338,23 +308,6 @@ templates:
     name: prefix_rationale_because_exemplars
     author: Rabiul Awal
 
-  d1d02aac-0a98-44e2-9c36-cb1452f84fdb: !Template
-    id: d1d02aac-0a98-44e2-9c36-cb1452f84fdb
-    jinja: '{{ caption }} Question: {{ question }} {{ choice }} Answer: '
-    metadata: !TemplateMetadata
-      choices_in_prompt: false
-    name: prefix_question_answer_knn
-    author: Rabiul Awal
-
-  c31170e8-f5ee-4bb2-95d0-07f17815a3f9: !Template
-    id: c31170e8-f5ee-4bb2-95d0-07f17815a3f9
-    jinja: |
-      {% if caption %} {{ caption }} {% endif %} Question: {{ question }} {{ choice }} Short answer: 
-    metadata: !TemplateMetadata
-      choices_in_prompt: false
-    name: prefix_question_short_answer_knn
-    author: Rabiul Awal
-
   
   80f3f441-9c6c-4b07-960c-3bcf19745fe0: !Template
     id: 80f3f441-9c6c-4b07-960c-3bcf19745fe0
@@ -367,16 +320,6 @@ templates:
     name: prefix_you_can_answer
     author: Rabiul Awal
 
-  2611dc31-9bbe-4e26-9635-86b3c506a99e: !Template
-    id: 2611dc31-9bbe-4e26-9635-86b3c506a99e
-    jinja: |
-      You can answer this question easily by looking at the image. 
-      Question: {{ question }} {{ choice }}
-      Short answer: 
-    metadata: !TemplateMetadata
-      choices_in_prompt: false
-    name: prefix_you_can_answer_knn
-    author: Rabiul Awal
 
   1b1b1b1b-1b1b-1b1b-1b1b-1b1b1b1b1b1b: !Template
     id: 1b1b1b1b-1b1b-1b1b-1b1b-1b1b1b1b1b1b

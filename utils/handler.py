@@ -8,6 +8,7 @@ class PromptingHandler:
     def __init__(self, dataset_name: str, prompt_name=None, subset_name=None):
         self.prompt = None
         self.prompt_name = prompt_name
+        self.subset_name = subset_name
         self.gpt3_response_dir = os.path.join("output", dataset_name, "gpt3-api", "generated-questions")
         self.prompt = self.load_prompt_template(dataset_name, prompt_name, subset_name=subset_name)
 

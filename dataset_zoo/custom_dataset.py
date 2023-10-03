@@ -34,15 +34,16 @@ class VQADataset(Dataset):
         self.dataset = get_vqa_dataset(dataset_name, split, config.task_type == "multiple_choice")
         self.prompt_handler = prompt_handler
         self.model_name = kwargs.get("model_name")
-
         self.additional_context_data = {}
-        if prompt_handler is not None and self.config.vqa_format in [
-            "caption_vqa",
-            "cot_vqa",
-        ]:  # prompt_handler tell us whether it is for vqa inference or caching the context data
-            self.additional_context_data = self.load_cached_context_data(split)
-
         self.demo_samples_provider = None
+
+        if prompt_handler:
+            self._initialize_cache_on_prompt_handler()
+
+    def _initialize_cache_on_prompt_handler(self):
+        if self.prompt_handler.subset_name == "vqa" and self.config.vqa_format in ["caption_vqa", "cot_vqa"]:
+            self.additional_context_data = self.load_cached_context_data(self.split)
+
         if self.config.few_shot:
             self.demo_samples_provider = DemoSamplesProvider(self.config)
 
@@ -106,70 +107,91 @@ class VQADataset(Dataset):
 
     def __getitem__(self, idx) -> Dict:
         content = self.dataset[idx]
-        question_id = content["question_id"]
-        image_path = content["image_path"]
-        question = content["question"]
-
-        if self.dataset_name in ["vqa_v2", "okvqa"]:
-            answer = content["answers"][0].get("raw_answer", content["answers"][0].get("answer"))
-        else:
-            answer = content["answer"]
-
-        if self.dataset_name in ["visual7w", "aokvqa"] and self.config.task_type == "multiple_choice":
-            choice = content["choice"]
-            choice = [c.strip(punctuation) for c in choice]
-            random.shuffle(choice)
-            lst_choice = choice.pop()  # remove the last element and store it in a separate variable
-            choice = ", ".join(choice) + " or " + lst_choice + "?"
-
-        image = Image.open(image_path).convert("RGB")
         data = {
-            "image": image,
-            "image_path": image_path,
-            "question": question,
-            "answer": answer,
-            "question_id": question_id,
+            "image": Image.open(content["image_path"]).convert("RGB"),
+            "image_path": content["image_path"],
+            "question": content["question"],
+            "answer": self._get_answer(content),
+            "question_id": content["question_id"],
         }
 
-        if self.prompt_handler is not None:
-            inp = {"question": question, "add_special_tokens": "flamingo" in self.model_name}
-            if self.dataset_name in ["visual7w", "aokvqa"] and self.config.task_type == "multiple_choice":
-                inp.update({"choice": choice})
+        if self.prompt_handler:
+            data.update(self._get_prompted_data(content))
+        return data
 
-            # TODO: this only works for standard-qa setting
+    def _get_answer(self, content):
+        if self.dataset_name in ["vqa_v2", "okvqa"]:
+            return content["answers"][0].get("raw_answer", content["answers"][0].get("answer"))
+        return content["answer"]
+
+    def _get_prompted_data(self, content):
+        data = {}
+        question = content["question"]
+        if self.prompt_handler.subset_name == "vqa":
+            inp = {"question": question}
+            if self.dataset_name in ["visual7w", "aokvqa"] and self.config.task_type == "multiple_choice":
+                inp.update({"choice": self._get_choice(content)})
+
             if self.additional_context_data:
-                additional_context_str = self.load_cached_context_data_by_ids(str(question_id))
+                additional_context_str = self.additional_context_data[str(content["question_id"])]
                 if additional_context_str[-1] != ".":
                     additional_context_str += "."
-                context_data_key = "rationale" if self.config.vqa_format == "cot_qa" else "caption"
+                context_data_key = "rationale" if self.config.vqa_format == "cot_vqa" else "caption"
                 inp.update({context_data_key: additional_context_str})
 
             prompted_question = self.prompt_handler.generic_prompting_handler_for_vqa(inp)
             data["prompted_question_without_demo"] = prompted_question
 
-            if self.demo_samples_provider is not None:
-                support_data = self.in_context_provider.get_support_examples_by_question_id(question_id)
+            if self.demo_samples_provider:
+                support_data = self.demo_samples_provider.get_support_examples_by_question_id(content["question_id"])
                 data["support_examples"] = support_data["support_examples"]
-
                 prompted_question = support_data["formatted_support_text"] + prompted_question
-
             if "opt" in self.config.model_name:
                 prompted_question = prompted_question.replace("\n", " ")
 
             # if "kosmos" in self.config.model_name:
             #     prompted_question = f"<grounding> {prompted_question}"
+            data["prompted_question"] = prompted_question.strip()
 
-            prompted_question = prompted_question.strip()
-
-            data.update({"prompted_question": prompted_question})
+        elif self.prompt_handler.subset_name == "captioning":
+            prompted_question = self._get_prompt_str_for_single_question(question)
+            data.update({"prompted_question": prompted_question, "prompted_question_without_demo": prompted_question})
 
         return data
+
+    def _get_choice(self, content):
+        choice = content["choice"]
+        choice = [c.strip(punctuation) for c in choice]
+        random.shuffle(choice)
+        lst_choice = choice.pop()
+        return ", ".join(choice) + " or " + lst_choice + "?"
+
+    def _get_prompt_str_for_single_question(self, question: str) -> str:
+        """
+        Get prompt string for a single question.
+
+        Parameters:
+        - prompt_handler: The handler object for prompting.
+        - question (str): A single question string.
+
+        Returns:
+        str: The generated prompt string.
+        """
+        if "promptcap" in self.prompt_handler.prompt_name:
+            prompt_txt = self.prompt_handler.prompt.apply({"question": question})[0]
+        elif self.prompt_handler.prompt_name.startswith("prefix_"):
+            prompt_txt = self.prompt_handler.prompt.apply({})[0]
+            logger.debug(f"PROMPT FOR CAPTION GENERATION: {prompt_txt}")
+        else:
+            prompt_txt = ""
+
+        return prompt_txt
 
 
 class DemoSamplesProvider:
     def __init__(self, config):
         self.config = config
-        self.split = "train"
+        self.split = "train_bal" if config.dataset_name == "gqa" else "train"
         self.dataset_name = config.dataset_name
         self.vqa_format = config.vqa_format
         prompt_handler, _ = get_prompt_template_handler(config, config.prompt_name)
@@ -205,34 +227,24 @@ class DemoSamplesProvider:
         exemplar_dataset = get_vqa_dataset(dataset_name, split, multiple_choice)
 
         context_data = {}
-        if self.vqa_format == "caption_qa":
+        if self.vqa_format == "caption_vqa":
             context_data = self.load_generated_captions(self.config, split, prompt_name)
 
-        elif self.vqa_format == "cot_qa":
+        elif self.vqa_format == "cot_vqa":
             context_data = self.load_generated_rationales(self.config, split, prompt_name)
 
         support_data_map = {}
         for content in tqdm(exemplar_dataset, desc="Loading support data"):
             question_id = content["question_id"]
-
-            if self.dataset_name in ["vqa_v2", "okvqa"]:
-                answer = content["answers"][0].get("raw_answer", content["answers"][0].get("answer"))
-            else:
-                answer = content["answer"]
+            answer = self._get_answer(content)
             answer = answer + "."  # add a period at the end of the answer
-            choices = content.get("choice", "")
-            if choices:
-                last_choice = choices.pop()
-                options = f"{', '.join(choices)} or {last_choice}?"
-                choices = options
-
-            context = context_data.get(str(question_id), "")
+            context = context_data.get(question_id, context_data.get(str(question_id)))
 
             support_data_map[question_id] = {
                 "question": content["question"],
                 "answer": answer,
-                "choice": choices,
-                "context": context,
+                "choice": self._get_choice(content),
+                "caption": context,
                 "image_path": content["image_path"],
             }
         return support_data_map
@@ -257,19 +269,36 @@ class DemoSamplesProvider:
         support_questions = ""
         for i, example in enumerate(support_examples, start=1):
             support_questions += f"{i}. {example}\n"
+            # support_questions += f"{example}\n"
+
         logger.debug(f"Support questions: {support_questions}")
 
-        instruction_start = (
-            "You task is visual question answering. A few sample Q&A pairs are given below for reference:\n"
-        )
-        instruction_end = "Now, answer the following question about the image you see.\n"
+        instruction_start = "You task is visual question answering. Here are some suggested QA pairs (not related to the given image):\n"
+        instruction_end = "Now, answer the following question about the image.\n"
         # instructions = "In this task, your goal is to write an answer to a question about the image. Here are some suggested QA pairs (not related to the given image)\n"
         formatted_support_text = instruction_start + support_questions + instruction_end
 
         return {"support_examples": support_data, "formatted_support_text": formatted_support_text}
 
+    def _get_answer(self, content):
+        if self.dataset_name in ["vqa_v2", "okvqa"]:
+            return content["answers"][0].get("raw_answer", content["answers"][0].get("answer"))
+        return content["answer"]
+
+    def _get_choice(self, content):
+        choice = content.get("choice", [])
+        if choice:
+            choice = [c.strip(punctuation) for c in choice]
+            random.shuffle(choice)
+            lst_choice = choice.pop()
+            return ", ".join(choice) + " or " + lst_choice + "?"
+
+        return ""
+
     @staticmethod
     def load_generated_captions(config, split, prompt_name="prefix_promptcap"):
+        logger.info(f"Loading generated captions for {config.dataset_name}, {config.model_name}, {split}")
+
         fpath = os.path.join(
             OUTPUT_DIR,
             "cache",
@@ -287,7 +316,7 @@ class DemoSamplesProvider:
 
     @staticmethod
     def load_generated_rationales(config, split, prompt_name):
-        logger.info(config.dataset_name, config.model_name, prompt_name, split)
+        logger.info(f"Loading generated rationales for {config.dataset_name}, {config.model_name}, {split}")
         fpath = os.path.join(
             OUTPUT_DIR,
             "cache",
@@ -304,37 +333,40 @@ class DemoSamplesProvider:
         return rationale_data
 
 
+def get_flamingo_format(text: str, answer=None) -> str:
+    return f"<image>{text} {'' if answer is None else ''}"
+
+
+def prepare_flamingo_data(example):
+    demo_samples = example.get("support_examples")
+
+    if demo_samples:  # num_shots > 0
+        context_images = [Image.open(x["image_path"]).convert("RGB") for x in demo_samples]
+        context_text = "".join(
+            [get_flamingo_format(text=x["prompted_question"], answer=x["answer"]) + "\n" for x in demo_samples]
+        )
+    else:
+        context_images = []
+        context_text = ""
+
+    context_images.append(example["image"])
+    context_text += get_flamingo_format(text=example["prompted_question_without_demo"])
+
+    if demo_samples is None:
+        context_text = context_text.replace("<image>", "")
+
+    return context_images, context_text
+
+
 def collate_fn_builder(processor=None, tokenizer=None):
-    def get_flamingo_format(text: str, answer=None) -> str:
-        return f"<image>{text} {'' if answer is None else ''}"
-
-    def prepare_flamingo_data(example):
-        demo_samples = example.get("support_examples")
-
-        if demo_samples:  # num_shots > 0
-            context_images = [Image.open(x["image_path"]).convert("RGB") for x in demo_samples]
-            context_text = "".join(
-                [get_flamingo_format(text=x["prompted_question"], answer=x["answer"]) + "\n" for x in demo_samples]
-            )
-        else:
-            context_images = []
-            context_text = ""
-
-        context_images.append(example["image"])
-        context_text += get_flamingo_format(text=example["prompted_question_without_demo"])
-
-        if demo_samples is None:
-            context_text = context_text.replace("<image>", "")
-
-        return context_images, context_text
-
     def collate_fn(batch):
         bkeys = ["question", "answer", "question_id", "prompted_question", "image", "image_path"]
         processed_batch = {bkey: [example[bkey] for example in batch] for bkey in bkeys if bkey in batch[0]}
 
         if processor is not None:
-            from dataset_zoo.custom_processor import FlamingoProcessor, LlaVaProcessor
-            
+            from dataset_zoo.custom_processor import (FlamingoProcessor,
+                                                      LlaVaProcessor)
+
             if isinstance(processor, FlamingoProcessor):
                 batch_images, batch_text = zip(*[prepare_flamingo_data(example) for example in batch])
 
@@ -343,12 +375,10 @@ def collate_fn_builder(processor=None, tokenizer=None):
                 processed_batch.update({"input_ids": input_ids, "attention_mask": attention_mask})
 
             elif isinstance(processor, LlaVaProcessor):
-                batch_images, batch_text = zip(
-                    *[
-                        processor.get_processed_tokens(example["prompted_question"], example["image_path"])
-                        for example in batch
-                    ]
+                batch_images, batch_text = processor.get_processed_tokens_batch(
+                    [example["prompted_question"] for example in batch], [example["image_path"] for example in batch]
                 )
+
                 processed_batch["image_tensors"] = batch_images
                 processed_batch["input_ids"] = batch_text
 

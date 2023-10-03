@@ -1,13 +1,13 @@
 import json
 import os
 import re
-import string
+from datetime import datetime
 
 from thefuzz import fuzz
 from tqdm import tqdm
 
 from dataset_zoo.common import load_visual7w_dataset_from_json
-from evals.answer_postprocess import postprocess_batch_vqa_generation_blip2
+from evals.answer_postprocess import normalize_string, postprocess_vqa_answers
 from evals.vqa import VQA
 from evals.vqaEval import VQAEval
 from utils.config import VQA_DATASET_DIR
@@ -15,15 +15,6 @@ from utils.logger import Logger
 from vqa_zero.inference_utils import save_to_json
 
 logger = Logger(__name__)
-
-
-def normalize_string(input_string):
-    input_string = input_string.lower()
-    input_string = input_string.replace("\n", "")  # remove newline characters
-    input_string = input_string.strip()  # remove leading and trailing whitespaces
-    input_string = input_string.strip(string.punctuation)  # remove punctuation
-    input_string = input_string.strip()  # remove leading and trailing whitespaces
-    return input_string
 
 
 def eval_vqa(args, output_dir: str, vicuna_ans_parser=False):
@@ -66,6 +57,8 @@ def eval_vqa(args, output_dir: str, vicuna_ans_parser=False):
         "fuzzy_accuracy": vqaEval.accuracy["fuzzyOverall"],
         "per_question_type_accuracy": vqaEval.accuracy["perQuestionType"],
         "per_answer_type_accuracy": vqaEval.accuracy["perAnswerType"],
+        "eval_time": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
     }
 
     fn_suffx = "result_meta_vicuna.json" if vicuna_ans_parser else "result_meta.json"
@@ -105,6 +98,7 @@ def eval_gqa(args, output_dir: str, vicuna_ans_parser: bool = False, results: di
         "num_examples": len(results),
         "vqa_accuracy": overall_acc,
         "fuzzy_accuracy": overall_fuzz_acc,
+        "eval_time": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     }
     fn_suffx = "result_meta_vicuna.json" if vicuna_ans_parser else "result_meta.json"
     json_file = os.path.join(output_dir, fn_suffx)
@@ -114,8 +108,8 @@ def eval_gqa(args, output_dir: str, vicuna_ans_parser: bool = False, results: di
 
 
 # https://github.com/allenai/aokvqa/blob/main/evaluation/eval_predictions.py
-def eval_visual7w(args, output_dir: str, preds, multiple_choice=False, strict=False, vicuna_ans_parser=False):
-    preds = {int(qid): preds[qid]["raw_prediction"] for qid in preds}
+def eval_visual7w(args, output_dir: str, predictions, multiple_choice=False, strict=False, vicuna_ans_parser=False):
+    preds = {qid: predictions[qid]["raw_prediction"] for qid in predictions}
     dataset = load_visual7w_dataset_from_json(args.dataset_name, "val")
     if isinstance(dataset, list):
         dataset = {dataset[i]["question_id"]: dataset[i] for i in range(len(dataset))}
@@ -125,17 +119,21 @@ def eval_visual7w(args, output_dir: str, preds, multiple_choice=False, strict=Fa
         assert dataset_qids.issubset(preds_qids), "Some questions are missing predictions"
 
     acc = []
+    wrong_predictions = []
     for q in preds.keys():
         pred = preds[q]
-        choices = dataset[q]["mc"]
+        choices = dataset[q]["choice"]
         direct_answers = [dataset[q]["answer"]]  # just one answer
 
         ## Multiple Choice setting
         if multiple_choice:
             if strict:
                 assert pred in choices, "Prediction must be a valid choice"
-            correct_choice_idx = dataset[q]["mc_selection"]
-            acc.append(float(normalize_string(pred) == normalize_string(dataset[q]["answer"])))
+            cur_acc = float(normalize_string(pred) == normalize_string(dataset[q]["answer"]))
+            acc.append(cur_acc)
+            if cur_acc == 0:
+                wrong_predictions.append(predictions[q])
+
         ## Direct Answer setting
         else:
             num_match = sum([normalize_string(pred) == normalize_string(da) for da in direct_answers])
@@ -152,6 +150,7 @@ def eval_visual7w(args, output_dir: str, preds, multiple_choice=False, strict=Fa
         "vqa_format": args.vqa_format,
         "num_examples": len(dataset),
         "vqa_accuracy": acc,
+        "eval_time": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     }
 
     logger.info(f"VQA Accuracy: {acc}")
@@ -161,6 +160,10 @@ def eval_visual7w(args, output_dir: str, preds, multiple_choice=False, strict=Fa
         json.dump(data, f, indent=4)
     logger.info(f"Saved result meta to {json_file}")
 
+    wrong_predictions_file = os.path.join(output_dir, "wrong_predictions.json")
+    with open(wrong_predictions_file, "w") as f:
+        json.dump(wrong_predictions, f, indent=4)
+    logger.info(f"Saved incorrect predictions to {wrong_predictions_file}")
 
 def _load_aokvqa(aokvqa_dir, split, version="v1p0"):
     assert split in ["train", "val", "test", "test_w_ans"]
@@ -203,10 +206,13 @@ def eval_aokvqa(args, output_dir: str, predictions, multiple_choice=False, stric
             correct_choice_idx = dataset[q]["correct_choice_idx"]
             cur_acc = float(normalize_string(pred) == normalize_string(choices[correct_choice_idx]))
             acc.append(cur_acc)
+            if cur_acc == 0:
+                wrong_predictions.append(predictions[q])
+
         ## Direct Answer setting
         else:
             gtAcc = []
-            direct_answers = postprocess_batch_vqa_generation_blip2(args.dataset_name, direct_answers)
+            direct_answers = postprocess_vqa_answers(args.dataset_name, direct_answers)
             direct_answers = [{"answer": da, "answer_id": idx} for idx, da in enumerate(direct_answers)]
 
             for gtAnsDatum in direct_answers:
@@ -236,6 +242,7 @@ def eval_aokvqa(args, output_dir: str, predictions, multiple_choice=False, stric
         "vqa_format": args.vqa_format,
         "num_examples": len(dataset),
         "vqa_accuracy": acc,
+        "eval_time": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     }
 
     logger.info(f"VQA Accuracy: {acc}")
@@ -270,7 +277,8 @@ def eval_winoground(args, output_dir: str, predictions, template_expr=""):
     group_correct_count = 0
     common_correct_count = 0
     uncommon_correct_count = 0
-    for result in predictions:
+    for data in predictions:
+        result = data["scores"]
         _result = {}
         for key, sentence in result.items():
             if key not in ["c0_i0", "c0_i1", "c1_i0", "c1_i1"]:
@@ -302,8 +310,7 @@ def eval_winoground(args, output_dir: str, predictions, template_expr=""):
         "group_score": group_correct_count * 100 / denominator,
         "common_score": common_correct_count * 100 / denominator,
         "uncommon_score": uncommon_correct_count * 100 / denominator,
+        "eval_time": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     }
     json_path = os.path.join(output_dir, "result_meta.json")
-
     save_to_json(json_path, data)
-    logger.info(f"Saved result information to {json_path}")

@@ -1,9 +1,8 @@
 import json
 import re
 import string
-from typing import List
 from functools import reduce
-
+from typing import List
 
 dont_change_list = ["left"]
 
@@ -25,7 +24,7 @@ manualMap = {
 articles = ["a", "an", "the"]
 
 
-def processDigitArticle(inText):
+def process_digit_article(inText):
     outText = []
     tempText = inText.lower().split()
     for word in tempText:
@@ -35,6 +34,7 @@ def processDigitArticle(inText):
         else:
             pass
     outText = " ".join(outText)
+
     return outText
 
 
@@ -42,42 +42,44 @@ def clean_last_word(s):  # sun10 -> sun; for vicuna llm answer extraction case o
     return re.sub(r"(?<=[a-zA-Z])\d+(?=\s*$)", "", s)
 
 
+def normalize_string(input_string):
+    input_string = input_string.lower()
+    input_string = input_string.replace("\n", "")  # remove newline characters
+    input_string = input_string.strip()  # remove leading and trailing whitespaces
+    input_string = input_string.strip(string.punctuation)  # remove punctuation
+    input_string = input_string.strip()  # remove leading and trailing whitespaces
+
+    return input_string
+
+
 class VQAAnswerProcessor:
     """Processor for VQA answer strings."""
 
     def __init__(self):
         import spacy
+
         spacy.prefer_gpu()
         self.lemmatizer = spacy.load("en_core_web_sm", disable=["parser", "ner"])
 
-    def process_okvqa(self, answers: List[str], questions=None):
-        if questions is None:
-            questions = [""] * len(answers)
-        answers = [self.remove_punctuation(answer) for answer in answers]
+    def process(self, dataset_name, answers: List[str], questions=None):
         answers = [self.fix_prefix(answer) for answer in answers]
-        answers = self.remove_last_noun_from_answer_if_matches_question_batch(answers, questions)
-        answers = [processDigitArticle(pred) for pred in answers]
-        lemmatized_answers = self.lemmatize(answers)
-        lemmatized_answers = [answer.strip() for answer in lemmatized_answers]
-        lemmatized_answers = [answer.lower() for answer in lemmatized_answers]
-        return lemmatized_answers
 
-    def process_standard(self, predictions: List[str]):
-        predictions = [self.fix_prefix(prediction) for prediction in predictions]
-        predictions = [processDigitArticle(pred) for pred in predictions]
-        predictions = [input_string.strip(string.punctuation) for input_string in predictions]  # remove punctuation
-        predictions = [input_string.strip() for input_string in predictions]  # remove leading and trailing whitespaces
-        predictions = [prediction.lower() for prediction in predictions]
+        if questions is not None:
+            if dataset_name == "aokvqa":
+                answers = [self.extract_before_or(answer) for answer in answers]
 
-        return predictions
+            if dataset_name in ["okvqa", "gqa"]:
+                answers = self.remove_matching_noun_suffix_from_answers(answers, questions)
 
-    @staticmethod
-    def remove_punctuation(word):
-        # Define a regular expression pattern that matches punctuation marks at the beginning or end of the word
-        pattern = r"^[\W_]+|[\W_]+$"
+            if dataset_name in ["okvqa"] and questions:
+                answers = self.lemmatize(answers)
 
-        # Use the sub() method of the re module to remove the punctuation marks
-        return re.sub(pattern, "", word)
+        answers = [process_digit_article(pred) for pred in answers]
+        answers = [input_string.strip(string.punctuation) for input_string in answers]  # remove punctuation
+        answers = [answer.strip() for answer in answers]
+        answers = [answer.lower() for answer in answers]
+
+        return answers
 
     def lemmatize_single(self, input_string):
         doc = self.lemmatizer(input_string)
@@ -90,6 +92,7 @@ class VQAAnswerProcessor:
                 # Preserve the original token along with the whitespace that follows it
                 words.append(token.text_with_ws)
         lemmatized_answer = "".join(words)
+
         return lemmatized_answer
 
     def lemmatize(self, answers):
@@ -106,22 +109,20 @@ class VQAAnswerProcessor:
                     words.append(token.text_with_ws)
             lemmatized_answer = "".join(words)
             lemmatized_answers.append(lemmatized_answer)
+
         return lemmatized_answers
 
-    def remove_last_noun_from_answer_if_matches_question_batch(self, answers, questions):
+    def remove_matching_noun_suffix_from_answers(self, answers, questions):
         """Remove answer suffix if it is a noun found in the corresponding question."""
-        question_nouns = []
-        for doc in self.lemmatizer.pipe(questions, batch_size=1000, n_process=-1):
-            nouns = []
-            for token in doc:
-                if token.pos_ == "NOUN":
-                    nouns.append(token.text)
-            question_nouns.append(nouns)
+        question_nouns = [
+            {token.text for token in doc if token.pos_ == "NOUN"}
+            for doc in self.lemmatizer.pipe(questions, n_process=-1)
+        ]
 
         processed_answers = []
         for answer, nouns in zip(answers, question_nouns):
             answer_words = answer.split()
-            if len(answer_words) < 2:
+            if len(answer_words) < 2 or len(answer_words) > 3:
                 processed_answers.append(answer)
                 continue
 
@@ -131,7 +132,31 @@ class VQAAnswerProcessor:
             else:
                 processed_answer = answer
             processed_answers.append(processed_answer)
+
         return processed_answers
+
+    @staticmethod
+    def extract_before_or(text: str) -> str:
+        """
+        If the word 'or' exists in a string, return the part before 'or'.
+        Otherwise, return an empty string.
+
+        Args:
+        - text (str): The input string to check.
+
+        Returns:
+        - str: The part of the string before 'or' if 'or' exists, otherwise an empty string.
+        """
+        match = re.search(r"(.+?)\s+or\s+", text, re.IGNORECASE)
+        return match.group(1).strip() if match else text
+
+    @staticmethod
+    def remove_punctuation(word):
+        # Define a regular expression pattern that matches punctuation marks at the beginning or end of the word
+        pattern = r"^[\W_]+|[\W_]+$"
+
+        # Use the sub() method of the re module to remove the punctuation marks
+        return re.sub(pattern, "", word)
 
     @staticmethod
     def fix_prefix(answer):
@@ -141,6 +166,7 @@ class VQAAnswerProcessor:
         answer = answer.split()
         if len(answer) > 1 and answer[0] in prefix_list:
             answer = answer[1:]
+
         return " ".join(answer)
 
     @staticmethod
@@ -154,13 +180,8 @@ class VQAAnswerProcessor:
 answer_processor = VQAAnswerProcessor()
 
 
-def postprocess_batch_vqa_generation_blip2(dataset_name: str, predictions: List[str], questions=None) -> str:
-    if dataset_name == "okvqa":
-        predictions = answer_processor.process_okvqa(predictions, questions)
-    else:
-        predictions = answer_processor.process_standard(predictions)
-
-    return predictions
+def postprocess_vqa_answers(dataset_name: str, predictions: List[str], questions=None) -> str:
+    return answer_processor.process(dataset_name, predictions, questions)
 
 
 def extract_rationale_per_question(answers, sz):
@@ -222,8 +243,11 @@ def majority_vote_with_indices(answers, sz):
     return results, indices
 
 
-def answer_postprocess_batch(args, batch, logger):
+def postprocess_cleanup_answer(args, predictions, logger):
+    qids = list(predictions.keys())
+    batch = [predictions[qid] for qid in qids]
     output = [data["generated_output"] for data in batch]
+
     if args.self_consistency:
         logger.info(f"RAW PREDICTION: {json.dumps(output, indent=2)}")
         if "rationale" in args.prompt_name:
@@ -232,38 +256,36 @@ def answer_postprocess_batch(args, batch, logger):
             batch["reasoning_answers"] = extract_rationale_per_question(extracted_answers, args.num_captions)
         else:
             extracted_answers = list(output)
-        processed_answers = postprocess_batch_vqa_generation_blip2(args.dataset_name, extracted_answers)
+        processed_answers = postprocess_vqa_answers(args.dataset_name, extracted_answers)
         majority_answers, indices = majority_vote_with_indices(processed_answers, args.num_captions)
         batch["raw_prediction"] = [output[i] for i in indices]
         batch["prediction"] = majority_answers
         output = batch["raw_prediction"]
 
     else:
-        questions = [data["prompted_question"] for data in batch]
+        questions = [data["question"] for data in batch]
 
         if "rationale" in args.prompt_name and "iterative" not in args.prompt_name:
             output = [extract_answer_from_cot(prediction) for prediction in output]
 
         partitions = [". ", "Q: ", "Question: "]
-        if args.model_name in ["kosmos2", "opt27b", "opt67b", "open_flamingo_mpt", "open_flamingo_llama"]:
+        if args.model_name in ["kosmos2", "opt27b", "opt67b", "open_flamingo_mpt", "open_flamingo_redpajama", "open_flamingo_redpajama_instruct"]:
             questions = [re.sub("^<grounding> ", "", q) for q in questions]
-            output = [re.split(r"[\n.]", o)[0] for q, o in zip(questions, output)]
-            output = [
-                reduce(lambda txt, p: txt.partition(p)[0], partitions, text)
-                for text in output
-            ]
+            output = [re.split(r"[\n.]", o)[0] for o in output]
+            output = [reduce(lambda txt, p: txt.partition(p)[0], partitions, text) for text in output]
             output = [o.strip() for o in output]
 
         for i, data in enumerate(batch):
             data["raw_prediction"] = output[i]
 
         if args.dataset_name in ["aokvqa", "visual7w"] and args.task_type == "multiple_choice":
-            batch["prediction"] = output
+            for i, data in enumerate(batch):
+                data["prediction"] = data["raw_prediction"]
         else:
-            cleaned_predictions = postprocess_batch_vqa_generation_blip2(
+            cleaned_results = postprocess_vqa_answers(
                 args.dataset_name, output, questions
             )  # answer batch processing for blip2
             for i, data in enumerate(batch):
-                data["prediction"] = cleaned_predictions[i]
+                data["prediction"] = cleaned_results[i]
 
-    return batch
+    return predictions

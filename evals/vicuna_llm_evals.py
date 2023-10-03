@@ -8,8 +8,7 @@ import pandas as pd
 from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 
-from evals.answer_postprocess import (clean_last_word,
-                                      postprocess_batch_vqa_generation_blip2)
+from evals.answer_postprocess import clean_last_word, postprocess_vqa_answers
 from evals.answer_postprocess_vicuna_llm import AnswerPostProcessLLM
 from utils.logger import Logger
 
@@ -99,7 +98,7 @@ def collate_fn(batch):
 
 
 def extract_answers_from_predictions_vicunallm(
-    args, predictions, answer_extractor: AnswerPostProcessLLM, batch_size=32, num_examples_in_task_prompt=8, chunk_id=-1
+    predictions, answer_extractor: AnswerPostProcessLLM, batch_size=16, num_examples_in_task_prompt=8, chunk_id=-1
 ):
     dataset = PredictionsDataset(predictions)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=4, collate_fn=collate_fn)
@@ -116,7 +115,7 @@ def extract_answers_from_predictions_vicunallm(
         ).input_ids.to(answer_extractor.device)
         generated_outputs = answer_extractor.generate_output_batch(
             input_ids=input_ids,
-            max_length=50,
+            max_length=10,
             num_return_sequences=1,
         )
 
@@ -137,9 +136,14 @@ def extract_answers_from_predictions_vicunallm(
             parsed_predictions[qid] = curr_data
             logger.debug(f"question_id = {qid}, input_text = {input_text}, prediction = {ans}")
 
+    return parsed_predictions
+
+
+def postprocess_cleanup_vicuna(dataset_name, parsed_predictions):
     # Post-process the predictions
     batch_answers = [data["prediction"] for data in parsed_predictions.values()]
-    batch_answers = postprocess_batch_vqa_generation_blip2(args.dataset_name, batch_answers)
+    batch_questions = [data["question"] for data in parsed_predictions.values()]
+    batch_answers = postprocess_vqa_answers(dataset_name, batch_answers, batch_questions)
     batch_answers = [clean_last_word(ans) for ans in batch_answers]
 
     # If you intend to update parsed_predictions with cleaned answers
