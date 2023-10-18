@@ -1,0 +1,136 @@
+dataset: visual7w
+subset: vqa
+
+templates:
+  a5a5c47d-26b6-41da-99b5-23b5a6306930: !Template
+    id: a5a5c47d-26b6-41da-99b5-23b5a6306930
+    jinja: '{{ caption }} Please answer the following question. {{ question }} {{ choice }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_answer_the_following_question
+    author: Rabiul Awal
+
+
+  458eaf97-8dbf-45e5-9ef0-6ee930c6e15a: !Template
+    id: 458eaf97-8dbf-45e5-9ef0-6ee930c6e15a
+    jinja: '{{ caption }} Please answer the following question about the image. {{ question }} {{ choice }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_answer_the_following_question_image
+    author: Rabiul Awal
+
+  56cc8b51-cd02-43c5-a23f-1f08a0c7fba6: !Template
+    id: 56cc8b51-cd02-43c5-a23f-1f08a0c7fba6
+    jinja: '{{ caption }} Please answer the following question in short. {{ question }} {{ choice }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_answer_the_following_question_in_short
+    author: Rabiul Awal
+
+  d98bf1eb-961c-44b9-9f25-5e1d96a10fb5: !Template
+    id: d98bf1eb-961c-44b9-9f25-5e1d96a10fb5
+    jinja: |
+      {% if caption -%} {{ caption }} {% endif -%} {{ question }} {% if choice -%} Choices: {{ choice }} {% endif -%}
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_null
+    author: Rabiul Awal
+
+  3a74a422-7be6-43c2-8f2d-06eb9a7f9c75: !Template
+    id: 3a74a422-7be6-43c2-8f2d-06eb9a7f9c75
+    jinja: |
+      {% if fewshot == True -%}
+      {% if caption -%} {{ caption }} {% endif -%} Question: {{ question }} {% if choice -%} Select the correct one from choices: {{ choice }} {% endif -%} Answer: {{ answer }}
+      {% else -%}
+      {% if caption -%} {{ caption }} {% endif -%} Question: {{ question }} {% if choice -%} Select the correct one from choices: {{ choice }} {% endif -%} Answer:
+      {% endif %}
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_question_answer
+    author: Rabiul Awal
+
+  3e9c9a7e-87d2-4aa2-a57f-6f7d6d7e2b98: !Template
+    id: 3e9c9a7e-87d2-4aa2-a57f-6f7d6d7e2b98
+    jinja: |
+      {% if fewshot == True -%}
+      {% if caption -%} {{ caption }} {% endif -%} Question: {{ question }} {% if choice -%} Choices: {{ choice }} {% endif -%} Short answer: {{ answer }}
+      {% else -%}
+      {% if caption -%} {{ caption }} {% endif -%} Question: {{ question }} {% if choice -%} Choices: {{ choice }} {% endif -%} Short answer:
+      {% endif %}
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_question_short_answer
+    author: Rabiul Awal
+  
+  5b5baf0-07ff-4760-926d-79efb7388780: !Template
+    id: 5b5baf0-07ff-4760-926d-79efb7388780
+    jinja: |
+      {% if caption -%} {{ caption }} {% endif -%}
+      Answer the following question by reasoning step-by-step. 
+      Question: {{ question }} {% if choice -%} Choices: {{ choice }} {% endif -%}
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_instruct_rationale
+    author: Rabiul Awal
+
+  6379cbd5-f3c5-484f-833a-75e33b863b0b: !Template
+    id: 6379cbd5-f3c5-484f-833a-75e33b863b0b
+    jinja: |
+      {% if caption -%} Choices: {{ caption }} {% endif -%}
+      Q: {{ question }}
+      {% if choice -%} Choices: {{ choice }} {% endif -%}
+      A: Let's think step by step.
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_think_step_by_step_rationale
+    author: Rabiul Awal
+
+  2d8c9a0b-1b2a-3c4d-5e6f-7d8c9a0b1b2a: !Template
+    id: 2d8c9a0b-1b2a-3c4d-5e6f-7d8c9a0b1b2a
+    jinja: |
+      Question: What is the man holding? Options: Book, Cane, A cellphone or Helmet? Answer: "A cellphone"
+      Question: What is growing on the mountain? Options: Trees and plants, Grass, Moss or Mold? Answer: "Trees and plants"
+      Question: How is the food heated? Options: Hot coals, Electric coils, Natural gas or Burning wood? Answer: "Hot coals"
+      Question: When was this photo taken? Options: During the winter months, In the spring, In the fall or In the summer? Answer: "During the winter months."
+      Question: Why are the children wearing baseball gloves? Options: They're playing basketball, They're playing soccer, They're playing football or They're playing baseball? Answer: "They're playing baseball"  
+      {% if add_special_tokens == True %}
+      <image>Question: {{ question }} {{ choice }} Answer:
+      {% else %}      
+      Question: {{ question }} {{ choice }} Answer:
+      {% endif %}
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_exemplars
+    author: Rabiul Awal
+
+  45b5baf0-07ff-4760-926d-79efb7388780: !Template
+    id: 45b5baf0-07ff-4760-926d-79efb7388780
+    jinja: |
+      Your task is to answer the question based on the image that may require visual grounding and reasoning.
+      1. Question: What is the man holding? Options: Book, Cane, A cellphone or Helmet? Answer: "A cellphone"
+      2. Question: What is growing on the mountain? Options: Trees and plants, Grass, Moss or Mold? Answer: "Trees and plants"
+      3. Question: How is the food heated? Options: Hot coals, Electric coils, Natural gas or Burning wood? Answer: "Hot coals"
+      4. Question: When was this photo taken? Options: During the winter months, In the spring, In the fall or In the summer? Answer: "During the winter months."
+      5. Question: Why are the children wearing baseball gloves? Options: They're playing basketball, They're playing soccer, They're playing football or They're playing baseball? Answer: "They're playing baseball"  
+      {% if add_special_tokens == True %}
+      <image>6. Question: {{ question }} {{ choice }} Answer:
+      {% else %}
+      6. Question: {{ question }} {{ choice }} Answer:
+      {% endif %}
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_instruct_exemplars
+    author: Rabiul Awal
+
+  ef02b0f5-0ea5-4b83-9cad-5569da3f3cb4: !Template
+    id: ef02b0f5-0ea5-4b83-9cad-5569da3f3cb4
+    jinja: |
+      {% if fewshot == True -%}
+      {% if caption -%} {{ caption }} {% endif -%} Question: {{ question }} {% if choice -%} {{ choice }} {% endif -%} Short answer: {{ answer }}
+      {% else -%}
+      {% if caption -%} {{ caption }} {% endif -%} Your task is to provide an answer that may require object-level grounded reasoning. Question: {{ question }} {% if choice -%} {{ choice }} {% endif -%} Short answer:
+      {% endif %}
+      
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_your_task_grounded_qa_short_answer

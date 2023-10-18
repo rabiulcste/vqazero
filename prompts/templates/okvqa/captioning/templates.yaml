@@ -1,0 +1,259 @@
+dataset: okvqa
+subset: captioning
+
+templates:
+  8417b80c-574c-48b9-a6f7-6dbfa52cf08a: !Template
+    id: 8417b80c-574c-48b9-a6f7-6dbfa52cf08a
+    jinja: 'An image of "{{ caption }}."'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: an_image_of
+    author: Rabiul Awal
+          
+  4a236153-9ed3-4e44-b068-5c5f3540de05: !Template
+    id: 4a236153-9ed3-4e44-b068-5c5f3540de05
+    jinja: 'A photo of "{{ caption }}."'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: a_photo_of
+    author: Rabiul Awal
+
+  9d2e09d7-8a0d-471a-bf35-789739c7bc95: !Template
+    id: 9d2e09d7-8a0d-471a-bf35-789739c7bc95
+    jinja: 'A picture of "{{ caption }}."'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: a_picture_of
+    author: Rabiul Awal
+
+  fbf9cc4c-83f8-4bc2-9c5d-9b1f07422f0e: !Template
+    id: fbf9cc4c-83f8-4bc2-9c5d-9b1f07422f0e
+    jinja: 'In this picture - "{{ caption }}."'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: in_this_picture    
+    author: Rabiul Awal
+
+  0f8d95a6-782f-44f9-8647-9d660e0f7d68: !Template
+    id: 0f8d95a6-782f-44f9-8647-9d660e0f7d68
+    jinja: 'In this image - "{{ caption }}."'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: in_this_image    
+    author: Rabiul Awal
+
+  262b76cf-f8c9-45c5-a063-0820e25fc67d: !Template
+    id: 262b76cf-f8c9-45c5-a063-0820e25fc67d
+    jinja: 'In this scene - "{{ caption }}."'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: in_this_scene    
+    author: Rabiul Awal
+
+  5d080a9c-507f-4f17-90cb-1d8f6cbde4e4: !Template
+    id: 5d080a9c-507f-4f17-90cb-1d8f6cbde4e4
+    jinja: 'Describe the scene'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_describe_the_scene    
+    author: Rabiul Awal
+
+  1d2e3c4b-5a6b-7c8d-9e0f-1a2b3c4d5e6f: !Template
+    id: 1d2e3c4b-5a6b-7c8d-9e0f-1a2b3c4d5e6f
+    jinja: 'Describe the image'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_describe_the_image
+    author: Rabiul Awal
+
+  7e6f5d4c-3b2a-1e0f-9d8c-6b5a4c3d2e1d: !Template
+    id: 7e6f5d4c-3b2a-1e0f-9d8c-6b5a4c3d2e1d
+    jinja: 'What is happening in the image?'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_whats_happening
+    author: Rabiul Awal
+
+  9e8d7c6b-4a3b-2c1d-0f9e-5a6b4c3d2e1f: !Template
+    id: 9e8d7c6b-4a3b-2c1d-0f9e-5a6b4c3d2e1f
+    jinja: 'Please describe the image'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_please_describe_the_image
+    author: Rabiul Awal
+
+  1a2b3c4d-5e6f-7d8c-9b0a-1e2f3g4h5i6j: !Template
+    id: 1a2b3c4d-5e6f-7d8c-9b0a-1e2f3g4h5i6j
+    jinja: 'What do you see?'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_whats_the_image
+    author: Rabiul Awal
+
+  3d2e1c4b-5f6e-7d8c-9a0b-1b2a3c4d5e6f: !Template
+    id: 3d2e1c4b-5f6e-7d8c-9a0b-1b2a3c4d5e6f
+    jinja: 'A photo of'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_a_photo_of
+    author: Rabiul Awal
+
+  5f6e7d8c-9a0b-1b2a-3c4d-5e6f7d8c9a0b: !Template
+    id: 5f6e7d8c-9a0b-1b2a-3c4d-5e6f7d8c9a0b
+    jinja: ''
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: long_caption
+    author: Rabiul Awal
+
+  7d8c9a0b-1b2a-3c4d-5e6f-7d8c9a0b1b2a: !Template
+    id: 7d8c9a0b-1b2a-3c4d-5e6f-7d8c9a0b1b2a
+    jinja: 'An photo that shows'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_a_photo_that_shows
+
+  9a0b1b2a-3c4d-5e6f-7d8c-9a0b1b2a3c4d: !Template
+    id: 9a0b1b2a-3c4d-5e6f-7d8c-9a0b1b2a3c4d
+    jinja: 'A photo in which'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_a_photo_in_which
+
+  1b2a3c4d-5e6f-7d8c-9a0b-1b2a3c4d5e6f: !Template
+    id: 1b2a3c4d-5e6f-7d8c-9a0b-1b2a3c4d5e6f
+    jinja: 'Please describe this image according by reasoning step-by-step according to the given question: {{ question }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_promptcap_step_by_step
+    author: Rabiul Awal
+
+  3c4d5e6f-7d8c-9a0b-1b2a-3c4d5e6f7d8c: !Template
+    id: 3c4d5e6f-7d8c-9a0b-1b2a-3c4d5e6f7d8c
+    jinja: 'Please describe this image according to the given question: {{ question }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_promptcap
+  
+  5e6f7d8c-9a0b-1b2a-3c4d-5e6f7d8c9a0b: !Template
+    id: 5e6f7d8c-9a0b-1b2a-3c4d-5e6f7d8c9a0b
+    jinja: 'Please describe this image according to answer the given question: {{ question }} A photo of'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_promptcap_a_photo_of 
+
+  7e6f7d8c-9a0b-1b2a-3c4d-5e6f7d8c9a0b: !Template
+    id: 7e6f7d8c-9a0b-1b2a-3c4d-5e6f7d8c9a0b
+    jinja: 'Please describe this image according to accurately answer the given question: {{ question }} A photo of'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_promptcap_accurately_a_photo_of
+
+  9e6f7d8c-9a0b-1b2a-3c4d-5e6f7d8c9a0b: !Template
+    id: 9e6f7d8c-9a0b-1b2a-3c4d-5e6f7d8c9a0b
+    jinja: 'Please describe this image in great details to answer the given question: {{ question }} A photo of'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_promptcap_in_details_a_photo_of
+
+  1e6f7d8c-9a0b-1b2a-3c4d-5e6f7d8c9a0b: !Template
+    id: 1e6f7d8c-9a0b-1b2a-3c4d-5e6f7d8c9a0b
+    jinja: 'Please describe this image along with the reasoning to answer the given question: {{ question }} A photo of'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_promptcap_reasoning_a_photo_of
+
+  2d8c9a0b-1b2a-3c4d-5e6f-7d8c9a0b1b2a: !Template
+    id: 2d8c9a0b-1b2a-3c4d-5e6f-7d8c9a0b1b2a
+    jinja: |
+      {% if question %}
+      To answer this question "{{ question }}" what information you must describe about the image? You must follow the Wh words in the question to answer.
+      {% else %}
+      {{ caption }}
+      {% endif %}
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: promptcap_what_you_need_to_know
+    author: Rabiul Awal
+
+    
+  7b5baf0-07ff-4760-926d-79efb7388780: !Template
+    id: 7b5baf0-07ff-4760-926d-79efb7388780
+    jinja: |
+      {% if question %}
+      In this task, your goal is to describe the image according to the given question. A high-quality caption is the one that contains rich and high-quality information to answer the question. To create such caption, here are some suggestions:
+      What brand racket is the player holding? A photo of "a woman holding a wilson tennis racket on a tennis court." 
+      What kind of fruit? A photo of "a piece of cake with a strawberry on top."
+      Is this a walkway or motorway? A photo of "a woman riding a motorcycle on a walkway."
+      What kind of skiing is this person engaged in? A photo of "a woman skiing in the snow."
+      Which airline has this insignia? A photo of "a large jetliner sitting on top of an airport tarmac with a korean air insignia on it."
+      How tall is this animal usually? A photo of "two giraffes walking in a fenced in area."
+      What electronic device is the person using at the moment? An photo of "a woman sitting on a bean bag chair using a laptop."
+      What kind of bird is this? A photo of "a sparrow standing in a grassy field."
+      Why is the cow here? A photo of "a cow standing in a lake."
+      What kind of train is this? A photo of "a passenger train parked in a train station."
+      What type of flower is this? A photo of "a rose in a vase on a table."
+      What health benefit does this type of vegetable have? A photo of "a tray of broccoli."
+      What kind of electronic device is used in this picture? A photo of "a woman sitting on a couch using a cell phone."
+      Now, write a caption for the following question. Do not directly answer the question, write an informative and high-quality caption. The caption must start with "A photo of".
+      {{ question }}
+      {% else %}
+      {{ caption }}
+      {% endif %}
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: promptcap_exemplars
+    author: Rabiul Awal
+
+  f5df1625-f3d1-4e4e-b6ef-536ed2f3ff9c: !Template
+    id: f5df1625-f3d1-4e4e-b6ef-536ed2f3ff9c
+    jinja: |
+      {% if question %}
+      In this task, your goal is to describe the image according to the given question. A high-quality caption is the one that contains rich and high-quality information to answer the question. To create such caption, here are some suggestions:
+      Q: What brand racket is the player holding? A woman holding a tennis racket on a tennis court. Which band rocket? Wilson. Final caption: A photo of a woman holding a wilson tennis racket on a tennis court.
+      Q: What kind of fruit? A piece of cake on a plate next to a fork. What kind of fruit? Strawberry. Final caption: A photo of a piece of cake with a strawberry on top.
+      Q: Is this a walkway or motorway? A man riding a motorcycle down a dirt road in a village. Is he driving on walkway? Yes. Final caption: A photo of "a woman riding a motorcycle on a walkway."
+      Q: How tall is this animal usually? Two giraffes in a zoo enclosure. How tall is giraffe usually? 20 feet. A photo of "two giraffes, usually giragge can be 20 feet tall."
+      Q: What electronic device is the person using at the moment? A woman sitting on a bean bag chair using a laptop." Final caption: A photo of "a woman is sitting on a bean bag while using a laptop."
+      Q: What kind of train is this? A train is parked at a train station? What kind of train it is? Passenger. Final caption: An photo of "a passenger train parked in a train station."
+      Q: What type of flower is this? A rose in a vase on a table. Final caption: A photo of "a rose in a vase on a table."
+      Q: What kind of electronic device is used in this picture? A woman sitting on a couch. What electronic device women using? Cell phone. Final caption: A photo of "a woman sitting on a couch using a cell phone."
+      Now, write a caption for the following question. Do not directly answer the question, write an informative and high-quality caption. Try to refine the caption. The final caption must start with "A photo of".
+      Q: {{ question }}
+      {% else %}
+      {{ caption }}
+      {% endif %}
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: promptcap_exemplars_refined
+    author: Rabiul Awal
+
+  3d8c9a0b-1b2a-3c4d-5e6f-7d8c9a0b1b2a: !Template
+    id: 3d8c9a0b-1b2a-3c4d-5e6f-7d8c9a0b1b2a
+    jinja: |
+      {% if question %}
+      In this task, you are asked to describe this image according to the given question. Ensure that you pay close attention to the question words and include specific details about the scene, including objects and their attributes, as well as context about what is happening. 
+      To create a high-quality caption, use any knowledge that you have about the image to refine your description.
+      Question: {{ question }} Question guided detailed image description: 
+      {% else %}
+      {{ caption }}
+      {% endif %}
+
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_describe_image_instructed
+    author: Rabiul Awal
+
+  a3e4fb3f-a3c7-4837-a624-dade9457ef3b: !Template
+    id: a3e4fb3f-a3c7-4837-a624-dade9457ef3b
+    jinja: |
+      {% if question %}
+      Question: {{ question }} Question guided detailed image description: 
+      {% else %}
+      {{ caption }}
+      {% endif %}
+
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_describe_image_guided
+    author: Rabiul Awal

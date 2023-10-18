@@ -25,7 +25,13 @@ DATASET_CONFIG = {
             "image_prefix": "COCO_val2014_",  # COCO_test2015_
         },
         "train": {
-            "question_file": "v2_OpenEnded_mscoco_train2014_questions.json",
+            "question_file": "v2_OpenEnded_mscoco_train2014_questions_small.json",
+            "annotation_file": "v2_mscoco_train2014_annotations.json",
+            "image_root": "train2014/",
+            "image_prefix": "COCO_train2014_",
+        },
+        "train_30k": {
+            "question_file": "v2_OpenEnded_mscoco_train2014_questions_30k.json",
             "annotation_file": "v2_mscoco_train2014_annotations.json",
             "image_root": "train2014/",
             "image_prefix": "COCO_train2014_",
@@ -36,20 +42,21 @@ DATASET_CONFIG = {
         "image_prefix": "v7w_",
     },
     "gqa": {
-        "val": {
+        "testdev_bal": {
             "annotation_file": "testdev_balanced_questions.json",  # this is eval set
             # "annotation_file": "testdev_small.json",
-            "image_root": "images/",
+            "image_root": "/network/projects/aishwarya_lab/datasets/gqa/images/",
             "image_prefix": "gqa",
         },
-        "train": {
-            "annotation_file": "train_balanced_questions_small.json",
-            "image_root": "images/",
+        "train_bal": {
+            "annotation_file": "train_balanced_questions.json",
+            # "annotation_file": "train_balanced_questions_small.json",
+            "image_root": "/network/projects/aishwarya_lab/datasets/gqa/images/",
             "image_prefix": "gqa",
         },
-        "testdev": {
+        "testdev_all": {
             "annotation_file": "testdev_all_questions.json",
-            "image_root": "images/",
+            "image_root": "/network/projects/aishwarya_lab/datasets/gqa/images/",
             "image_prefix": "gqa",
         },
     },
@@ -63,8 +70,8 @@ MODEL_CLS_INFO = {
     "lavis": {
         "blip_vqa": {"name": "blip_vqa", "model_type": "vqav2"},
         "blip_caption": {"name": "blip_caption", "model_type": "large_coco"},
-        "blip2_t5_flant5xl": {"name": "blip2_t5", "model_type": "pretrain_flant5xl"},
-        "blip2_t5_flant5xxl": {"name": "blip2_t5", "model_type": "pretrain_flant5xxl"},
+        "blip2_flan_t5xl": {"name": "blip2_t5", "model_type": "pretrain_flant5xl"},
+        "blip2_flant_5xxl": {"name": "blip2_t5", "model_type": "pretrain_flant5xxl"},
     },
     "hfformer": {
         "ofa_vqa": {"name": "OFA-Sys/ofa-huge-vqa"},
@@ -74,20 +81,35 @@ MODEL_CLS_INFO = {
         "git_large_textcaps": {"name": "microsoft/git-large-textcaps"},
         "blip2_opt27b": {"name": "Salesforce/blip2-opt-2.7b"},
         "blip2_opt67b": {"name": "Salesforce/blip2-opt-6.7b"},
-        "blip2_t5_flant5xl": {"name": "Salesforce/blip2-flan-t5-xl"},
-        "blip2_t5_flant5xxl": {"name": "Salesforce/blip2-flan-t5-xxl"},
+        "blip2_flant5xl": {"name": "Salesforce/blip2-flan-t5-xl"},
+        "blip2_flant5xxl": {"name": "Salesforce/blip2-flan-t5-xxl"},
         "flant5xl": {"name": "google/flan-t5-xl"},
         "flant5xxl": {"name": "google/flan-t5-xxl"},
         "opt27b": {"name": "facebook/opt-2.7b"},
         "opt67b": {"name": "facebook/opt-6.7b"},
-    },
-    "mlfoundations": {
-        "open_flamingo_lamma": {
+        "vicuna13b": {"name": "lmsys/vicuna-13b-v1.5"},
+        "redpajama": {"name": "togethercomputer/RedPajama-INCITE-Base-3B-v1"},
+        "redpajama_instruct": {"name": "togethercomputer/RedPajama-INCITE-Instruct-3B-v1"},
+        "kosmos2": {"name": "ydshieh/kosmos-2-patch14-224"},
+        "open_flamingo_redpajama": {
             "vision_encoder_path": "ViT-L-14",
-            "name": "openflamingo/OpenFlamingo-9B",
-            "lang_encoder_path": "luodian/llama-7b-hf",
-            "tokenizer_path": "luodian/llama-7b-hf",
-        }
+            "name": "openflamingo/OpenFlamingo-4B-vitl-rpj3b",
+            "lang_encoder_path": "togethercomputer/RedPajama-INCITE-Base-3B-v1",
+            "tokenizer_path": "togethercomputer/RedPajama-INCITE-Base-3B-v1",
+        },
+        "open_flamingo_redpajama_instruct": {
+            "vision_encoder_path": "ViT-L-14",
+            "name": "openflamingo/OpenFlamingo-4B-vitl-rpj3b-langinstruct",
+            "lang_encoder_path": "togethercomputer/RedPajama-INCITE-Instruct-3B-v1",
+            "tokenizer_path": "togethercomputer/RedPajama-INCITE-Instruct-3B-v1",
+        },
+        "open_flamingo_mpt": {
+            "vision_encoder_path": "ViT-L-14",
+            "name": "openflamingo/OpenFlamingo-3B-vitl-mpt1b",
+            "lang_encoder_path": "anas-awadalla/mpt-1b-redpajama-200b",
+            "tokenizer_path": "anas-awadalla/mpt-1b-redpajama-200b",
+        },
+        "llava": {"name": "liuhaotian/llava-v1-0719-336px-lora-vicuna-13b-v1.3", "base": "lmsys/vicuna-13b-v1.3"},
     },
 }
 
@@ -95,38 +117,41 @@ MODEL_CLS_INFO = {
 # Define an array of prompts.
 okvqa_prompts = [
     "prefix_your_task_knowledge_qa_short_answer",
-    "prefix_your_task_knowledge_qa_short_answer_knn",
 ]
 visual7w_prompts = [
     "prefix_your_task_grounded_qa_short_answer",
-    "prefix_your_task_grounded_qa_short_answer_knn",
 ]
 gqa_prompts = [
     "prefix_your_task_compositional_qa_short_answer",
-    "prefix_your_task_compositional_qa_short_answer_knn",
 ]
 
 vqa_v2_prompts = [
     "prefix_your_task_vqa_short_answer",
-    "prefix_your_task_vqa_short_answer_knn",
 ]
 
 vqa_prompts = [
-    "prefix_answer_the_following_question",
-    "prefix_answer_the_following_question_knn",
-    "prefix_null",
+    # "prefix_answer_the_following_question",
+    # "prefix_null",
     "prefix_question_answer",
-    "prefix_question_answer_knn",
     "prefix_question_short_answer",
-    "prefix_question_short_answer_knn",
+]
+chain_of_thought_prompts = [
+    "prefix_think_step_by_step_rationale",
+    "prefix_instruct_rationale",
 ]
 
 
+promptcap_prompts = [
+    "prefix_promptcap",
+]
 caption_prompts = [
     "a_photo_of",
     "prefix_a_photo_of",
     "prefix_promptcap_a_photo_of",
 ]
+caption_prompts += promptcap_prompts
+
+vqa_prompts += chain_of_thought_prompts
 
 VQA_PROMPT_COLLECTION = {
     "okvqa": {"caption": caption_prompts, "question": vqa_prompts + okvqa_prompts},

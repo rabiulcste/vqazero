@@ -1,20 +1,21 @@
 import json
 import os
 from collections import defaultdict
-from typing import List, Union
+from typing import List
 
 import torch
 from datasets import load_dataset
 from tqdm import tqdm
+from vqazero.caption_generation import CaptionPrefixHandlerWinoground
 
-from caption_generation import CaptionPrefixHandlerWinoground
-from modeling_utils import (apply_prompt_to_example_winoground,
-                            generate_output_blip, get_dir_path,
-                            get_image_tensors_winoground, get_prompt_handler,
-                            load_model_and_processors, save_to_json)
+from evals.vqa_accuracy import eval_winoground
 from utils.handler import DecompositionHandler, PromptingHandler
 from utils.logger import Logger
-from utils.vqa_accuracy import eval_winoground
+from vqa_zero.modeling_utils import (apply_prompt_to_example_winoground,
+                                     generate_output_blip, get_dir_path,
+                                     get_image_tensors_winoground,
+                                     get_prompt_handler,
+                                     load_model_and_processors, save_to_json)
 
 logger = Logger(__name__)
 

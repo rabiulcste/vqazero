@@ -1,0 +1,133 @@
+dataset: vqa_v2
+subset: vqa
+
+templates:
+  67b0a9a9-3bfa-45e8-b0e3-3f3dc66da966: !Template
+    id: 67b0a9a9-3bfa-45e8-b0e3-3f3dc66da966
+    jinja: |
+      {% if caption  %} {{ caption }} {% endif %} Please answer the following question. {{ question }}
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_answer_the_following_question
+    author: Rabiul Awal
+
+  7b84a28b-5f5a-4495-a2a1-9c5dcd75dab5: !Template
+    id: 7b84a28b-5f5a-4495-a2a1-9c5dcd75dab5
+    jinja: |
+      {% if caption  %} {{ caption }} {% endif %} Please answer the following question. {{ question }}
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_answer_the_following_question_image
+    author: Rabiul Awal
+
+  563a63e8-8b2c-4d62-9b27-42373f8f7f87: !Template
+    id: 563a63e8-8b2c-4d62-9b27-42373f8f7f87
+    jinja: 'Please answer the following question in short. {{ question }}'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_answer_the_following_question_in_short
+    author: Rabiul Awal
+
+  5d9c5a5a-1c8d-4b50-9ce7-08ecb0f6c49d: !Template
+    id: 5d9c5a5a-1c8d-4b50-9ce7-08ecb0f6c49d
+    jinja: |
+      {% if caption -%} {{ caption }} {% endif -%} {{ question }}
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_null
+    author: Rabiul Awal
+
+  0b6241c1-dcd1-42c8-bc70-2ab42af091c9: !Template
+    id: 0b6241c1-dcd1-42c8-bc70-2ab42af091c9
+    jinja: |
+      {% if fewshot == True -%}
+      {% if caption -%} {{ caption }} {% endif -%} Question: {{ question }} {% if choice -%} {{ choice }} {% endif -%} Answer: {{ answer }}
+      {% else -%}
+      {% if caption -%} {{ caption }} {% endif -%} Question: {{ question }} {% if choice -%} {{ choice }} {% endif -%} Answer:
+      {% endif %}           
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_question_answer
+    author: Rabiul Awal
+
+  4a906f15-1035-4768-bc5b-92c55e7a99fb: !Template
+    id: 4a906f15-1035-4768-bc5b-92c55e7a99fb
+    jinja: |
+      {% if fewshot == True -%}
+      {% if caption -%} {{ caption }} {% endif -%} Question: {{ question }} {% if choice -%} {{ choice }} {% endif -%} Short answer: {{ answer }}
+      {% else -%}
+      {% if caption -%} {{ caption }} {% endif -%} Question: {{ question }} {% if choice -%} {{ choice }} {% endif -%} Short answer:
+      {% endif %}  
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_question_short_answer
+    author: Rabiul Awal
+
+  3b0b0b1d-1b1f-4b0f-8b1f-1b1f4b0f8b1f: !Template
+    id: 3b0b0b1d-1b1f-4b0f-8b1f-1b1f4b0f8b1f
+    jinja: |
+      {% if fewshot == True -%}
+      {% if caption -%} {{ caption }} {% endif -%} Question: {{ question }} {% if choice -%} {{ choice }} {% endif -%} Short answer: {{ answer }}
+      {% else -%}
+      {% if caption -%} {{ caption }} {% endif -%} Your task is to answer a question based on the visual information present in the image. Question: {{ question }} {% if choice -%} {{ choice }} {% endif -%} Short answer:
+      {% endif %}   
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_your_task_vqa_short_answer
+
+  5b5baf0-07ff-4760-926d-79efb7388780: !Template
+    id: 5b5baf0-07ff-4760-926d-79efb7388780
+    jinja: |
+      {% if caption -%} {{ caption }} {% endif -%}
+      Answer the following question by reasoning step-by-step.
+      Q: {{ question }}
+      {% if choice -%} Choices: {{ choice }} {% endif -%}
+      A: 
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_instruct_rationale
+    author: Rabiul Awal
+
+  6379cbd5-f3c5-484f-833a-75e33b863b0b: !Template
+    id: 6379cbd5-f3c5-484f-833a-75e33b863b0b
+    jinja: |
+      {% if caption -%} {{ caption }} {% endif -%}
+      Q: {{ question }}
+      {% if choice -%} Choices: {{ choice }} {% endif -%}
+      A: Let's think step by step.
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_think_step_by_step_rationale
+    author: Rabiul Awal
+
+  eaf6798a-d3e3-48f1-a711-72eb8dc2c0ab: !Template    
+    id: eaf6798a-d3e3-48f1-a711-72eb8dc2c0ab
+    jinja: |
+      Given the image, answer the following question and provide a detailed rationale explaining the reasoning behind your answer:
+      Question: {{ question }}
+    metadata:
+      choices_in_prompt: false
+    name: prefix_rationale_behind_answer
+    author: Rabiul Awal
+
+  4a6caad7-c582-44c4-b4bd-d01018fe7b53: !Template
+    id: 4a6caad7-c582-44c4-b4bd-d01018fe7b53
+    jinja: |
+      {% if caption -%} {{ caption }} {% endif -%}
+      Q: {{ question }}
+      {% if choice -%} Choices: {{ choice }} {% endif -%}
+      Give the rationale before answering. Rationale and answer:
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_rationale_before_answering
+    author: Rabiul Awal
+
+  1b1b1b1b-1b1b-1b1b-1b1b-1b1b1b1b1b1b: !Template
+    id: 1b1b1b1b-1b1b-1b1b-1b1b-1b1b1b1b1b1b
+    jinja: |
+      First find the correct answer and then given an explanation.
+      Q: {{ question }}
+      A: 
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_because_rationale
