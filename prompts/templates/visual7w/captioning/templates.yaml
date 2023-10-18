@@ -1,5 +1,5 @@
 dataset: visual7w
-subset: caption
+subset: captioning
 
 templates:
   9d7b18de-91df-47c7-93eb-b44b4082b37a: !Template

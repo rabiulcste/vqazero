@@ -1,5 +1,5 @@
 dataset: okvqa
-subset: caption
+subset: captioning
 
 templates:
   8417b80c-574c-48b9-a6f7-6dbfa52cf08a: !Template

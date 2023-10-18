@@ -192,6 +192,16 @@ templates:
     name: prefix_think_step_by_step_rationale
     author: Rabiul Awal
 
+  eaf6798a-d3e3-48f1-a711-72eb8dc2c0ab: !Template    
+    id: eaf6798a-d3e3-48f1-a711-72eb8dc2c0ab
+    jinja: |
+      Given the image, answer the following question and provide a detailed rationale explaining the reasoning behind your answer:
+      Question: {{ question }}
+    metadata:
+      choices_in_prompt: false
+    name: prefix_rationale_behind_answer
+    author: Rabiul Awal
+
 
   4a6caad7-c582-44c4-b4bd-d01018fe7b53: !Template
     id: 4a6caad7-c582-44c4-b4bd-d01018fe7b53
@@ -199,11 +209,21 @@ templates:
       {% if caption -%} {{ caption }} {% endif -%}
       Q: {{ question }}
       {% if choice -%} Choices: {{ choice }} {% endif -%}
-      Give the rationale before answering.
+      Give the rationale before answering. Rationale and answer:
     metadata: !TemplateMetadata
       choices_in_prompt: false
     name: prefix_rationale_before_answering
     author: Rabiul Awal
+
+  1b1b1b1b-1b1b-1b1b-1b1b-1b1b1b1b1b1b: !Template
+    id: 1b1b1b1b-1b1b-1b1b-1b1b-1b1b1b1b1b1b
+    jinja: |
+      First find the correct answer and then given an explanation.
+      Q: {{ question }}
+      A: 
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_because_rationale
 
 
   6b5baf0-07ff-4760-926d-79efb7388780: !Template
@@ -319,14 +339,3 @@ templates:
       choices_in_prompt: false
     name: prefix_you_can_answer
     author: Rabiul Awal
-
-
-  1b1b1b1b-1b1b-1b1b-1b1b-1b1b1b1b1b1b: !Template
-    id: 1b1b1b1b-1b1b-1b1b-1b1b-1b1b1b1b1b1b
-    jinja: |
-      Answer the following question about the image in format. The answer is ... because .
-      Q: {{ question }}
-      A: 
-    metadata: !TemplateMetadata
-      choices_in_prompt: false
-    name: prefix_because_rationale

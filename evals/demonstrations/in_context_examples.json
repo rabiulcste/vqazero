@@ -1,202 +1,175 @@
 {
-    "llava": {
-        "okvqa": {
-            "io_structure": {
-                "input_keys": "Input",
-                "output_keys": "Short answer"
-            },
-            "samples": [
-                "Input: What sport can you use this for? You can use this motorcycle for off-road sports, such as motocross, enduro, or trail riding. Short answer: motocross",
-                "Input: What area of a school might this be? This area of the school might be a library or a classroom, as there are books and chairs in the background. Short answer: library",
-                "Input: What type od bread is this meal made from? This meal is made from pita bread. Short answer: pita",
-                "Input: Which brand of car is shown in this picture? The brand of car shown in the picture is a Volkswagen. Short answer: Volkswagen",
-                "Input: Is this a private or public room? This is a public room. Short answer: public",
-                "Input: What is the name of the device that is protecting people from the rain in this picture? The device that is protecting people from the rain in this picture is an umbrella. Short answer: umbrella",
-                "Input: Why might someone go to this place? Someone might go to this place, which appears to be a busy street in a city, for various reasons such as shopping, dining, socializing, or attending events. Short answer: shopping",
-                "Input: How tall do these animals get? Giraffes can grow up to 18 feet tall. Short answer: 18 feet"
-            ],
-            "chain_of_thought_samples":[
-                "Input: What sport can you use this for? You can use this motorcycle for off-road sports, such as motocross, enduro, or trail riding. Short answer: motocross",
-                "Input: What area of a school might this be? This area of the school might be a library or a classroom, as there are books and chairs in the background. Short answer: library",
-                "Input: What type od bread is this meal made from? This meal is made from pita bread. Short answer: pita",
-                "Input: Which brand of car is shown in this picture? The brand of car shown in the picture is a Volkswagen. Short answer: Volkswagen",
-                "Input: Is this a private or public room? This is a public room. Short answer: public",
-                "Input: What is the name of the device that is protecting people from the rain in this picture? The device that is protecting people from the rain in this picture is an umbrella. Short answer: umbrella",
-                "Input: Why might someone go to this place? Someone might go to this place, which appears to be a busy street in a city, for various reasons such as shopping, dining, socializing, or attending events. Short answer: shopping",
-                "Input: How tall do these animals get? Giraffes can grow up to 18 feet tall. Short answer: 18 feet"
-            ]
+    "okvqa": {
+        "io_structure": {
+            "input_keys": "Input",
+            "output_keys": "Short answer"
         },
-        "aokvqa": {
-            "io_structure": {
-                "input_keys": "Input",
-                "output_keys": "Short answer"
-            },
-            "samples": [
-                "Input: What type of device is sitting next to the laptop? A cell phone is sitting next to the laptop. Short answer: cell phone",
-                "Input: What U.S. city is the most likely setting for this street? The most likely setting for this street is New York City. Short answer: new york",
-                "Input: What kind of gathering does this look like? This looks like a family gathering or a casual dinner party. Short answer: family",
-                "Input: What position does the man holding the brown glove play? The man holding the brown glove is a catcher. Short answer: catcher",
-                "Input: What kind of pizza is this? This is a cheese pizza. Short answer: cheese",
-                "Input: A person following what kind of diet is least likely to eat this meal? A person following a vegetarian or vegan diet is least likely to eat this meal, as it contains meat and vegetables. Short answer: vegetarian",
-                "Input: What brand is the red truck? The red truck is a Dodge. Short answer: dodge",
-                "Input: What sport is being played in the image? The image shows a game of soccer being played. Short answer: soccer",
-                "Input: What event is this most likely? A dinner party. Short answer: dinner party",
-                "Input: Why is the person wearing a white jacket? He is chef. Short answer: chef",
-                "Input: The train is likely arriving at which American city? San Francisco. Short answer: san francisco",
-                "Input: Why do the cattle have their heads down to the ground? They are eating hay. Short answer: eating",
-                "Input: What are the people in the picture doing? They are skiing down snowy slope. Short answer: skiing",
-                "Input: Where are these cats located? Living room. Short answer: living room"
-            ],
-            "chain_of_thought_samples": [
-                "Input: What type of device is sitting next to the laptop? First, there is a laptop sitting on a table. Next, there is a cell phone sitting next to the laptop. Short answer: cell phone",
-                "Input: What U.S. city is the most likely setting for this street? The most likely setting for this street is New York City. Short answer: new york",
-                "Input: What kind of gathering does this look like? Based on the image, it appears to be a family gathering or a social event where a group of people, including adults and children, are seated around a dining table. They are enjoying a meal together, which suggests that the gathering is likely a celebration or a casual get-together where people come together to share food and conversation. Short answer: family",
-                "Input: What position does the man holding the brown glove play? The man holding the brown glove is a baseball player, likely a catcher. Short answer: catcher",
-                "Input: What kind of pizza is this? To determine the type of pizza in the image, let's analyze the visual elements step-by-step:\n\n1. The pizza is on a white plate.\n2. The pizza is topped with cheese.\n3. The pizza is also topped with tomato sauce.\n\nBased on these observations, we can conclude that the pizza in the image is likely a cheese and tomato sauce pizza. Short answer: cheese",
-                "Input: A person following what kind of diet is least likely to eat this meal? A person following a vegan or vegetarian diet is least likely to eat this meal, as it contains meat and potatoes. Vegans do not consume any animal products, including meat, dairy, and eggs. Vegetarians, on the other hand, do not eat meat but may consume dairy products and eggs. Since this meal consists of meat and potatoes, it is not suitable for those following a vegan or vegetarian diet. Short answer: vegetarian",
-                "Input: Which is the fruit? First, let's identify the main ingredients in the bowls. There are two bowls filled with food, and one of them has a piece of beef in it.\n\nNext, let's identify the fruit. In the image, there is a bowl with oranges, which could be considered the fruit.\n\nSo, the fruit in the image is the bowl of oranges. Short answer: oranges",
-                "Input: What sport is being played in the image? The image shows a game of soccer being played. Short answer: soccer",
-                "Input: What event is this most likely? Based on the image, it is most likely that this is a dinner party or a gathering of friends and family. The presence of multiple wine glasses, wine bottles, bread, cheese, and other food items on the table suggests that the guests are enjoying a meal together. Short answer: dinner party",
-                "Input: Why is the person wearing a white jacket? The person is wearing a white jacket because they are a chef or a server in a restaurant setting. Short answer: chef",
-                "Input: The train is likely arriving at which American city? San Francisco. Short answer: san francisco",
-                "Input: Why do the cattle have their heads down to the ground? The cattle have their heads down to the ground because they are eating hay from the hay bales. In the image, there are several cows in a pen, and they are gathered around the hay bales, feeding on the hay. Short answer: eating",
-                "Input: What are the people in the picture doing? The people in the picture are skiing down a snow-covered slope. Short answer: skiing",
-                "Input: Where are these cats located? The cats are located in a living room, specifically on a carpeted floor. Short answer: living room"
-            ]
-        },
-        "gqa": {
-            "io_structure": {
-                "input_keys": "Input",
-                "output_keys": "Short answer"
-            },
-            "samples": [
-                "Input: What is the airplane flying above? The airplane is flying above an ocean. Short answer: ocean",
-                "Input: Is the shape of the bottle the same as that of the cake? No, the shape of the bottle is not the same as that of the cake. Short answer: no",
-                "Input: What is the girl in front of? The girl is standing in front of a traffic sign. Short answer: traffic sign",
-                "Input: Which side of the image is the beige car on? The beige car is on the left side of the image. Short answer: left",
-                "Input: What is the fruit that is green called? The fruit that is green is peer. Short answer: peer",
-                "Input: Do the sneakers look blue and comfortable? Yes, the sneakers appear to be blue and comfortable. Short answer: yes",
-                "Input: What wears the shoe? A pitcher wears the shoe. Short answer: pitcher",
-                "Input: What do you think hangs above the counter top? A banana hangs above the counter top. Short answer: banana",
-                "Input: On which side is the large microwave? The large microwave is on the left side of the kitchen. Short answer: left",
-                "Input: What is the man in the blue shirt attempting to do? He is attempting to cross the road. Short answer: cross road",
-                "Input: Why is the pipe on the back of the truck? it is being transported to a job site. Short answer: transport"
-            ],
-            "chain_of_thought_samples": [
-                "Input: What is the airplane flying above? The airplane is flying above an ocean. Short answer: ocean",
-                "Input: Is the shape of the bottle the same as that of the cake? No, the shape of the bottle is not the same as that of the cake. Short answer: no",
-                "Input: What is the girl in front of? The girl is standing in front of a traffic sign. Short answer: traffic sign",
-                "Input: Which side of the image is the beige car on? The beige car is on the left side of the image. Short answer: left",
-                "Input: What is the fruit that is green called? The fruit that is green is peer. Short answer: peer",
-                "Input: Do the sneakers look blue and comfortable? Yes, the sneakers appear to be blue and comfortable. Short answer: yes",
-                "Input: What wears the shoe? A pitcher wears the shoe. Short answer: pitcher",
-                "Input: What do you think hangs above the counter top? A banana hangs above the counter top. Short answer: banana",
-                "Input: On which side is the large microwave? The large microwave is on the left side of the kitchen. Short answer: left",
-                "Input: What is the man in the blue shirt attempting to do? He is attempting to cross the road. Short answer: cross road",
-                "Input: Why is the pipe on the back of the truck? it is being transported to a job site. Short answer: transport"
-            ]
-        },
-        "vqa_v2": {
-            "io_structure": {
-                "input_keys": "Input",
-                "output_keys": "Short answer"
-            },
-            "samples": [
-                "Input: What is the airplane flying above? The airplane is flying above an ocean. Short answer: ocean",
-                "Input: Is the shape of the bottle the same as that of the cake? No, the shape of the bottle is not the same as that of the cake. Short answer: no",
-                "Input: What is the girl in front of? The girl is standing in front of a traffic sign. Short answer: traffic sign",
-                "Input: Which side of the image is the beige car on? The beige car is on the left side of the image. Short answer: left",
-                "Input: What is the fruit that is green called? The fruit that is green is peer. Short answer: peer",
-                "Input: Do the sneakers look blue and comfortable? Yes, the sneakers appear to be blue and comfortable. Short answer: yes",
-                "Input: What wears the shoe? A pitcher wears the shoe. Short answer: pitcher",
-                "Input: What do you think hangs above the counter top? A banana hangs above the counter top. Short answer: banana",
-                "Input: On which side is the large microwave? The large microwave is on the left side of the kitchen. Short answer: left",
-                "Input: What is the man in the blue shirt attempting to do? He is attempting to cross the road. Short answer: cross road",
-                "Input: Why is the pipe on the back of the truck? it is being transported to a job site. Short answer: transport"
-            ]
-        },
-        "visual7w": {
-            "io_structure": {
-                "input_keys": "Input",
-                "output_keys": "Short answer"
-            },
-            "samples": [
-                "Input: What is the airplane flying above? The airplane is flying above an ocean. Short answer: ocean",
-                "Input: Is the shape of the bottle the same as that of the cake? No, the shape of the bottle is not the same as that of the cake. Short answer: no",
-                "Input: What is the girl in front of? The girl is standing in front of a traffic sign. Short answer: traffic sign",
-                "Input: Which side of the image is the beige car on? The beige car is on the left side of the image. Short answer: left",
-                "Input: What is the fruit that is green called? The fruit that is green is peer. Short answer: peer",
-                "Input: Do the sneakers look blue and comfortable? Yes, the sneakers appear to be blue and comfortable. Short answer: yes",
-                "Input: What wears the shoe? A pitcher wears the shoe. Short answer: pitcher",
-                "Input: What do you think hangs above the counter top? A banana hangs above the counter top. Short answer: banana",
-                "Input: On which side is the large microwave? The large microwave is on the left side of the kitchen. Short answer: left",
-                "Input: What is the man in the blue shirt attempting to do? He is attempting to cross the road. Short answer: cross road",
-                "Input: Why is the pipe on the back of the truck? it is being transported to a job site. Short answer: transport"
-            ],
-            "chain_of_thought_samples": [
-                "Input: What is the airplane flying above? The airplane is flying above an ocean. Short answer: ocean",
-                "Input: Is the shape of the bottle the same as that of the cake? No, the shape of the bottle is not the same as that of the cake. Short answer: no",
-                "Input: What is the girl in front of? The girl is standing in front of a traffic sign. Short answer: traffic sign",
-                "Input: Which side of the image is the beige car on? The beige car is on the left side of the image. Short answer: left",
-                "Input: What is the fruit that is green called? The fruit that is green is peer. Short answer: peer",
-                "Input: Do the sneakers look blue and comfortable? Yes, the sneakers appear to be blue and comfortable. Short answer: yes",
-                "Input: What wears the shoe? A pitcher wears the shoe. Short answer: pitcher",
-                "Input: What do you think hangs above the counter top? A banana hangs above the counter top. Short answer: banana",
-                "Input: On which side is the large microwave? The large microwave is on the left side of the kitchen. Short answer: left",
-                "Input: What is the man in the blue shirt attempting to do? He is attempting to cross the road. Short answer: cross road",
-                "Input: Why is the pipe on the back of the truck? it is being transported to a job site. Short answer: transport"
-            ]
-        }
+        "task_description": "The task is to parse the short answer from input question and long answer. The answer should be a max one to three words or a short phrase.",
+        "samples": [
+            "Input: What sport can you use this for? You can use this motorcycle for off-road sports, such as motocross, enduro, or trail riding. Short answer: motocross",
+            "Input: What area of a school might this be? This area of the school might be a library or a classroom, as there are books and chairs in the background. Short answer: library",
+            "Input: What type od bread is this meal made from? This meal is made from pita bread. Short answer: pita",
+            "Input: Which brand of car is shown in this picture? The brand of car shown in the picture is a Volkswagen. Short answer: Volkswagen",
+            "Input: Is this a private or public room? This is a public room. Short answer: public",
+            "Input: What is the name of the device that is protecting people from the rain in this picture? The device that is protecting people from the rain in this picture is an umbrella. Short answer: umbrella",
+            "Input: Why might someone go to this place? Someone might go to this place, which appears to be a busy street in a city, for various reasons such as shopping, dining, socializing, or attending events. Short answer: shopping",
+            "Input: How tall do these animals get? Giraffes can grow up to 18 feet tall. Short answer: 18 feet",
+            "Input: What is this desk used for? The desk is used for working on a computer, making phone calls, and organizing office supplies. Short answer: working",
+            "Input: How long does this animal usually live? The average lifespan of a sheep is 10 years. Short answer: 10"
+        ],
+        "chain_of_thought_samples": [
+            "Input: What sport can you use this for? You can use this motorcycle for off-road sports, such as motocross, enduro, or trail riding. Short answer: motocross",
+            "Input: What area of a school might this be? This area of the school might be a library or a classroom, as there are books and chairs in the background. Short answer: library",
+            "Input: What type od bread is this meal made from? This meal is made from pita bread. Short answer: pita",
+            "Input: Which brand of car is shown in this picture? The brand of car shown in the picture is a Volkswagen. Short answer: Volkswagen",
+            "Input: Is this a private or public room? This is a public room. Short answer: public",
+            "Input: What is the name of the device that is protecting people from the rain in this picture? The device that is protecting people from the rain in this picture is an umbrella. Short answer: umbrella",
+            "Input: Why might someone go to this place? Someone might go to this place, which appears to be a busy street in a city, for various reasons such as shopping, dining, socializing, or attending events. Short answer: shopping",
+            "Input: How tall do these animals get? Giraffes can grow up to 18 feet tall. Short answer: 18 feet",
+            "Input: What is this desk used for? The desk is used for working on a computer, making phone calls, and organizing office supplies. The final answer is working. Short answer: working",
+            "Input: How long does this animal usually live? The image shows shep. The average lifespan of a sheep is 10 years. Short answer: 10"
+        ]
     },
-    "opt": {
-        "okvqa": {
-            "io_structure": {
-                "input_keys": "Input",
-                "output_keys": "Short answer"
-            },
-            "samples": [
-                "Input: What sport can you use this for? You can use this motorcycle for off-road sports, such as motocross, enduro, or trail riding. Short answer: motocross",
-                "Input: What area of a school might this be? This area of the school might be a library or a classroom, as there are books and chairs in the background. Short answer: library",
-                "Input: What type od bread is this meal made from? This meal is made from pita bread. Short answer: pita",
-                "Input: Which brand of car is shown in this picture? The brand of car shown in the picture is a Volkswagen. Short answer: Volkswagen",
-                "Input: Is this a private or public room? This is a public room. Short answer: public",
-                "Input: What is the name of the device that is protecting people from the rain in this picture? The device that is protecting people from the rain in this picture is an umbrella. Short answer: umbrella",
-                "Input: Why might someone go to this place? Someone might go to this place, which appears to be a busy street in a city, for various reasons such as shopping, dining, socializing, or attending events. Short answer: shopping",
-                "Input: How tall do these animals get? Giraffes can grow up to 18 feet tall. Short answer: 18 feet"
-            ]
+    "aokvqa": {
+        "io_structure": {
+            "input_keys": "Input",
+            "output_keys": "Short answer"
         },
-        "aokvqa": {
-            "io_structure": {
-                "input_keys": "Input",
-                "output_keys": "Short answer"
-            },
-            "samples": [
-                "Input: What type of device is sitting next to the laptop? A cell phone is sitting next to the laptop. Short answer: phone",
-                "Input: What U.S. city is the most likely setting for this street? The most likely setting for this street is New York City. Short answer: new york",
-                "Input: What kind of gathering does this look like? This looks like a family gathering or a casual dinner party. Short answer: family",
-                "Input: What position does the man holding the brown glove play? The man holding the brown glove is a catcher. Short answer: catcher",
-                "Input: What kind of pizza is this? This is a cheese pizza. Answer: cheese",
-                "Input: A person following what kind of diet is least likely to eat this meal? A person following a vegetarian or vegan diet is least likely to eat this meal, as it contains meat and vegetables. Short answer: vegetarian",
-                "Input: What brand is the red truck? The red truck is a Dodge. Short answer: dodge",
-                "Input: What sport is being played in the image? The image shows a game of soccer being played. Short answer: soccer"
-            ]
+        "task_description": "The task is to parse the short answer from input question and long answer. The answer should be a max one to three words or a short phrase.",
+        "samples": [
+            "Input: What type of device is sitting next to the laptop? A cell phone is sitting next to the laptop. Short answer: cell phone",
+            "Input: What U.S. city is the most likely setting for this street? The most likely setting for this street is New York City. Short answer: new york",
+            "Input: What kind of gathering does this look like? This looks like a family gathering or a casual dinner party. Short answer: family",
+            "Input: What position does the man holding the brown glove play? The man holding the brown glove is a catcher. Short answer: catcher",
+            "Input: What kind of pizza is this? This is a cheese pizza. Short answer: cheese",
+            "Input: A person following what kind of diet is least likely to eat this meal? A person following a vegetarian or vegan diet is least likely to eat this meal, as it contains meat and vegetables. Short answer: vegetarian",
+            "Input: What brand is the red truck? The red truck is a Dodge. Short answer: dodge",
+            "Input: What sport is being played in the image? The image shows a game of soccer being played. Short answer: soccer",
+            "Input: What event is this most likely? A dinner party. Short answer: dinner party",
+            "Input: Why is the person wearing a white jacket? He is chef. Short answer: chef",
+            "Input: The train is likely arriving at which American city? San Francisco. Short answer: san francisco",
+            "Input: Why do the cattle have their heads down to the ground? They are eating hay. Short answer: eating",
+            "Input: What are the people in the picture doing? They are skiing down snowy slope. Short answer: skiing",
+            "Input: Where are these cats located? Living room. Short answer: living room"
+        ],
+        "chain_of_thought_samples": [
+            "Input: What type of device is sitting next to the laptop? First, there is a laptop sitting on a table. Next, there is a cell phone sitting next to the laptop. Short answer: cell phone",
+            "Input: What U.S. city is the most likely setting for this street? The most likely setting for this street is New York City. Short answer: new york",
+            "Input: What kind of gathering does this look like? Based on the image, it appears to be a family gathering or a social event where a group of people, including adults and children, are seated around a dining table. They are enjoying a meal together, which suggests that the gathering is likely a celebration or a casual get-together where people come together to share food and conversation. Short answer: family",
+            "Input: What position does the man holding the brown glove play? The man holding the brown glove is a baseball player, likely a catcher. Short answer: catcher",
+            "Input: What kind of pizza is this? To determine the type of pizza in the image, let's analyze the visual elements step-by-step:\n\n1. The pizza is on a white plate.\n2. The pizza is topped with cheese.\n3. The pizza is also topped with tomato sauce.\n\nBased on these observations, we can conclude that the pizza in the image is likely a cheese and tomato sauce pizza. Short answer: cheese",
+            "Input: A person following what kind of diet is least likely to eat this meal? A person following a vegan or vegetarian diet is least likely to eat this meal, as it contains meat and potatoes. Vegans do not consume any animal products, including meat, dairy, and eggs. Vegetarians, on the other hand, do not eat meat but may consume dairy products and eggs. Since this meal consists of meat and potatoes, it is not suitable for those following a vegan or vegetarian diet. Short answer: vegetarian",
+            "Input: Which is the fruit? First, let's identify the main ingredients in the bowls. There are two bowls filled with food, and one of them has a piece of beef in it.\n\nNext, let's identify the fruit. In the image, there is a bowl with oranges, which could be considered the fruit.\n\nSo, the fruit in the image is the bowl of oranges. Short answer: oranges",
+            "Input: What sport is being played in the image? The image shows a game of soccer being played. Short answer: soccer",
+            "Input: What event is this most likely? Based on the image, it is most likely that this is a dinner party or a gathering of friends and family. The presence of multiple wine glasses, wine bottles, bread, cheese, and other food items on the table suggests that the guests are enjoying a meal together. Short answer: dinner party",
+            "Input: Why is the person wearing a white jacket? The person is wearing a white jacket because they are a chef or a server in a restaurant setting. Short answer: chef",
+            "Input: The train is likely arriving at which American city? San Francisco. Short answer: san francisco",
+            "Input: Why do the cattle have their heads down to the ground? The cattle have their heads down to the ground because they are eating hay from the hay bales. In the image, there are several cows in a pen, and they are gathered around the hay bales, feeding on the hay. Short answer: eating",
+            "Input: What are the people in the picture doing? The people in the picture are skiing down a snow-covered slope. Short answer: skiing",
+            "Input: Where are these cats located? The cats are located in a living room, specifically on a carpeted floor. Short answer: living room"
+        ]
+    },
+    "gqa": {
+        "io_structure": {
+            "input_keys": "Input",
+            "output_keys": "Short answer"
         },
-        "gqa": {
-            "io_structure": {
-                "input_keys": "Input",
-                "output_keys": "Short answer"
-            },
-            "samples": [
-                "Input: What is the airplane flying above? The airplane is flying above an ocean. Short answer: ocean",
-                "Input: Is the shape of the bottle the same as that of the cake? No, the shape of the bottle is not the same as that of the cake. Short answer: no",
-                "Input: What is the girl in front of? The girl is standing in front of a traffic sign. Short answer: traffic sign",
-                "Input: Which side of the image is the beige car on? The beige car is on the left side of the image. Short answer: left",
-                "Input: What is the fruit that is green called? The fruit that is green is peer. Short answer: peer",
-                "Input: Do the sneakers look blue and comfortable? Yes, the sneakers appear to be blue and comfortable. Short answer: yes",
-                "Input: What wears the shoe? A pitcher wears the shoe. Short answer: pitcher",
-                "Input: What do you think hangs above the counter top? A banana hangs above the counter top. Short answer: banana",
-                "Input: On which side is the large microwave? The large microwave is on the left side of the kitchen. Short answer: left"
-            ]
-        }
+        "task_description": "The task is to parse the short answer from input question and long answer. The answer should be a max one to three words or a short phrase.",
+        "samples": [
+            "Input: What is the airplane flying above? The airplane is flying above an ocean. Short answer: ocean",
+            "Input: Is the shape of the bottle the same as that of the cake? No, the shape of the bottle is not the same as that of the cake. Short answer: no",
+            "Input: What is the girl in front of? The girl is standing in front of a traffic sign. Short answer: traffic sign",
+            "Input: Which side of the image is the beige car on? The beige car is on the left side of the image. Short answer: left",
+            "Input: What is the fruit that is green called? The fruit that is green is peer. Short answer: peer",
+            "Input: Do the sneakers look blue and comfortable? Yes, the sneakers appear to be blue and comfortable. Short answer: yes",
+            "Input: What wears the shoe? A pitcher wears the shoe. Short answer: pitcher",
+            "Input: What do you think hangs above the counter top? A banana hangs above the counter top. Short answer: banana",
+            "Input: On which side is the large microwave? The large microwave is on the left side of the kitchen. Short answer: left",
+            "Input: What is the man in the blue shirt attempting to do? He is attempting to cross the road. Short answer: cross road",
+            "Input: Why is the pipe on the back of the truck? it is being transported to a job site. Short answer: transport"
+        ],
+        "chain_of_thought_samples": [
+            "Input: What is the airplane flying above? The airplane is flying above an ocean. Short answer: ocean",
+            "Input: Is the shape of the bottle the same as that of the cake? No, the shape of the bottle is not the same as that of the cake. Short answer: no",
+            "Input: What is the girl in front of? The girl is standing in front of a traffic sign. Short answer: traffic sign",
+            "Input: Which side of the image is the beige car on? The beige car is on the left side of the image. Short answer: left",
+            "Input: What is the fruit that is green called? The fruit that is green is peer. Short answer: peer",
+            "Input: Do the sneakers look blue and comfortable? Yes, the sneakers appear to be blue and comfortable. Short answer: yes",
+            "Input: What wears the shoe? A pitcher wears the shoe. Short answer: pitcher",
+            "Input: What do you think hangs above the counter top? A banana hangs above the counter top. Short answer: banana",
+            "Input: On which side is the large microwave? The large microwave is on the left side of the kitchen. Short answer: left",
+            "Input: What is the man in the blue shirt attempting to do? He is attempting to cross the road. Short answer: cross road",
+            "Input: Why is the pipe on the back of the truck? it is being transported to a job site. Short answer: transport"
+        ]
+    },
+    "vqa_v2": {
+        "io_structure": {
+            "input_keys": "Input",
+            "output_keys": "Short answer"
+        },
+        "task_description": "The task is to parse the short answer from input question and long answer. The answer should be a max one to three words or a short phrase.",
+        "samples": [
+            "Input: What is the airplane flying above? The airplane is flying above an ocean. Short answer: ocean",
+            "Input: Is the shape of the bottle the same as that of the cake? No, the shape of the bottle is not the same as that of the cake. Short answer: no",
+            "Input: What is the girl in front of? The girl is standing in front of a traffic sign. Short answer: traffic sign",
+            "Input: Which side of the image is the beige car on? The beige car is on the left side of the image. Short answer: left",
+            "Input: What is the fruit that is green called? The fruit that is green is peer. Short answer: peer",
+            "Input: Do the sneakers look blue and comfortable? Yes, the sneakers appear to be blue and comfortable. Short answer: yes",
+            "Input: What wears the shoe? A pitcher wears the shoe. Short answer: pitcher",
+            "Input: What do you think hangs above the counter top? A banana hangs above the counter top. Short answer: banana",
+            "Input: On which side is the large microwave? The large microwave is on the left side of the kitchen. Short answer: left",
+            "Input: What is the man in the blue shirt attempting to do? He is attempting to cross the road. Short answer: cross road",
+            "Input: Why is the pipe on the back of the truck? it is being transported to a job site. Short answer: transport",
+            "Input: What sport is being played in the image? The image shows a game of soccer being played. Short answer: soccer"
+        ],
+        "chain_of_thought_samples": [
+            "Input: What is the airplane flying above? The airplane is flying above an ocean. Short answer: ocean",
+            "Input: Is the shape of the bottle the same as that of the cake? No, the shape of the bottle is not the same as that of the cake. Short answer: no",
+            "Input: What is the girl in front of? The girl is standing in front of a traffic sign. Short answer: traffic sign",
+            "Input: Which side of the image is the beige car on? The beige car is on the left side of the image. Short answer: left",
+            "Input: What is the fruit that is green called? The fruit that is green is peer. Short answer: peer",
+            "Input: Do the sneakers look blue and comfortable? Yes, the sneakers appear to be blue and comfortable. Short answer: yes",
+            "Input: What wears the shoe? A pitcher wears the shoe. Short answer: pitcher",
+            "Input: What do you think hangs above the counter top? A banana hangs above the counter top. Short answer: banana",
+            "Input: On which side is the large microwave? The large microwave is on the left side of the kitchen. Short answer: left",
+            "Input: What is the man in the blue shirt attempting to do? He is attempting to cross the road. Short answer: cross road",
+            "Input: Why is the pipe on the back of the truck? it is being transported to a job site. Short answer: transport",
+            "Input: What sport is being played in the image? The image shows a game of soccer being played. Short answer: soccer"
+        ]
+    },
+    "visual7w": {
+        "io_structure": {
+            "input_keys": "Input",
+            "output_keys": "Short answer"
+        },
+        "task_description": "The task is to parse the short answer from input question and long answer. The answer should be a max one to three words or a short phrase.",
+        "samples": [
+            "Input: What is the airplane flying above? The airplane is flying above an ocean. Short answer: ocean",
+            "Input: Is the shape of the bottle the same as that of the cake? No, the shape of the bottle is not the same as that of the cake. Short answer: no",
+            "Input: What is the girl in front of? The girl is standing in front of a traffic sign. Short answer: traffic sign",
+            "Input: Which side of the image is the beige car on? The beige car is on the left side of the image. Short answer: left",
+            "Input: What is the fruit that is green called? The fruit that is green is peer. Short answer: peer",
+            "Input: Do the sneakers look blue and comfortable? Yes, the sneakers appear to be blue and comfortable. Short answer: yes",
+            "Input: What wears the shoe? A pitcher wears the shoe. Short answer: pitcher",
+            "Input: What do you think hangs above the counter top? A banana hangs above the counter top. Short answer: banana",
+            "Input: On which side is the large microwave? The large microwave is on the left side of the kitchen. Short answer: left",
+            "Input: What is the man in the blue shirt attempting to do? He is attempting to cross the road. Short answer: cross road",
+            "Input: Why is the pipe on the back of the truck? it is being transported to a job site. Short answer: transport",
+            "Input: What sport is being played in the image? The image shows a game of soccer being played. Short answer: soccer"
+        ],
+        "chain_of_thought_samples": [
+            "Input: What is the airplane flying above? The airplane is flying above an ocean. Short answer: ocean",
+            "Input: Is the shape of the bottle the same as that of the cake? No, the shape of the bottle is not the same as that of the cake. Short answer: no",
+            "Input: What is the girl in front of? The girl is standing in front of a traffic sign. Short answer: traffic sign",
+            "Input: Which side of the image is the beige car on? The beige car is on the left side of the image. Short answer: left",
+            "Input: What is the fruit that is green called? The fruit that is green is peer. Short answer: peer",
+            "Input: Do the sneakers look blue and comfortable? Yes, the sneakers appear to be blue and comfortable. Short answer: yes",
+            "Input: What wears the shoe? A pitcher wears the shoe. Short answer: pitcher",
+            "Input: What do you think hangs above the counter top? A banana hangs above the counter top. Short answer: banana",
+            "Input: On which side is the large microwave? The large microwave is on the left side of the kitchen. Short answer: left",
+            "Input: What is the man in the blue shirt attempting to do? He is attempting to cross the road. Short answer: cross road",
+            "Input: Why is the pipe on the back of the truck? it is being transported to a job site. Short answer: transport",
+            "Input: What sport is being played in the image? The image shows a game of soccer being played. Short answer: soccer"
+        ]
     }
 }

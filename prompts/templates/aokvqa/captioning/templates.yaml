@@ -99,7 +99,12 @@ templates:
 
   5f5e7b5d-bccb-4e52-8e01-7c5e9c9d5232: !Template
     id: 5f5e7b5d-bccb-4e52-8e01-7c5e9c9d5232
-    jinja: 'Please describe this image according to the given question: {{ question }}'
+    jinja: |
+      {% if question %}
+      Please describe this image according to the given question: {{ question }}
+      {% else %}
+      {{ caption }}
+      {% endif %}
     metadata: !TemplateMetadata
       choices_in_prompt: false
     name: prefix_promptcap
@@ -131,7 +136,12 @@ templates:
 
   8f6c255d-4d4e-4f4b-b434-1f11dabeb35a: !Template
     id: 8f6c255d-4d4e-4f4b-b434-1f11dabeb35a
-    jinja: 'Please describe this image along with your reasoning to answer the given question: {{ question }} An image of'
+    jinja: |
+      {% if question %}
+      Please describe this image along with your reasoning to answer the given question: {{ question }} An image of
+      {% else %}
+      {{ caption }}
+      {% endif %}
     metadata: !TemplateMetadata
       choices_in_prompt: false
     name: prefix_promptcap_reasoning_an_image_of
@@ -165,4 +175,4 @@ templates:
     metadata: !TemplateMetadata
       choices_in_prompt: false
     name: prefix_describe_image_guided
-    author: Rabiul Awa
+    author: Rabiul Awal

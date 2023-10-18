@@ -24,7 +24,7 @@ class EnsemblePredictions:
         prompts_dirs = [os.path.join(self.data_dir_path, prompt) for prompt in self.prompts]
 
         for prompt_dir in prompts_dirs:
-            fpath = os.path.join(prompt_dir, self.args.task_type, self.args.split_name, "predictions.json")
+            fpath = os.path.join(prompt_dir, self.args.task_type, self.args.split, "predictions.json")
 
             if not os.path.exists(fpath):
                 print(f"File not found: {fpath}")
@@ -40,7 +40,7 @@ class EnsemblePredictions:
         prompts_dirs = [os.path.join(self.data_dir_path, prompt) for prompt in self.prompts]
 
         for prompt_dir in prompts_dirs:
-            fpath = os.path.join(prompt_dir, self.args.task_type, self.args.split_name, "predictions.json")
+            fpath = os.path.join(prompt_dir, self.args.task_type, self.args.split, "predictions.json")
 
             if os.path.exists(fpath):
                 with open(fpath, "r") as f:
@@ -124,7 +124,7 @@ def parse_args():
         help="choose generator model type",
     )
     parser.add_argument(
-        "--split_name",
+        "--split",
         type=str,
         default="val",
         choices=["val", "testdev_bal"],

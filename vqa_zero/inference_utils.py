@@ -1,6 +1,7 @@
 import json
 import os
 import time
+from typing import List, Union
 
 import numpy as np
 import torch
@@ -12,14 +13,14 @@ from transformers import (AutoModelForCausalLM, AutoModelForVision2Seq,
 from utils.config import HUGGINFACE_HUB_DIR, OUTPUT_DIR, VQA_DATASET_DIR
 from utils.globals import DATASET_CONFIG, MODEL_CLS_INFO
 from utils.handler import PromptingHandler
-from utils.helpers import CustomEncoder
+from utils.helpers import CustomJsonEncoder
 from utils.logger import Logger
 
 logger = Logger(__name__)
 
 
 # model and inference related methods
-def load_model_and_processors(model_cls_name: str, device, autocast_dtype):
+def load_model_and_processors(model_cls_name: str, device: str, autocast_dtype):
     model_name = MODEL_CLS_INFO["hfformer"][model_cls_name]["name"]
 
     processor, tokenizer = None, None
@@ -27,10 +28,12 @@ def load_model_and_processors(model_cls_name: str, device, autocast_dtype):
         tokenizer = T5Tokenizer.from_pretrained(model_name)
         model = T5ForConditionalGeneration.from_pretrained(model_name, torch_dtype=autocast_dtype, device_map="auto")
 
-    elif model_cls_name in ["opt27b", "opt67b"]:
+    elif model_cls_name in ["opt27b", "opt67b", "vicuna13b", "redpajama", "redpajama_instruct"]:
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=autocast_dtype, device_map="auto")
         tokenizer.padding_side = "left"
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
 
     elif model_cls_name == "kosmos2":
         model = AutoModelForVision2Seq.from_pretrained(model_name, trust_remote_code=True)
@@ -88,7 +91,7 @@ def load_model_and_processors(model_cls_name: str, device, autocast_dtype):
     return model, processor, tokenizer
 
 
-def get_optimal_batch_size_v2(model, seq_length, batch_size):
+def get_optimal_batch_size_v2(model, seq_length: int, batch_size: int):
     """
     Returns the optimal batch size for inference that considers the model size and the available GPU memory.
     """
@@ -192,18 +195,13 @@ def apply_prompt_to_example_winoground(handler: PromptingHandler, example):
 
 
 def is_vqa_output_cache_exists(args):
-    N = 5
     output_dir = get_output_dir_path(args)
 
-    fpath = os.path.join(output_dir, "result_meta.json")
+    fn_suffix = "predictions.json"
+    fpath = os.path.join(output_dir, fn_suffix)
     if not args.overwrite_output_dir and os.path.exists(fpath):
-        file_mod_time = os.path.getmtime(fpath)
-        current_time = time.time()
-        n_days_in_seconds = N * 24 * 60 * 60
-
-        if current_time - file_mod_time < n_days_in_seconds:
-            logger.info(f"File {fpath} already exists. Skipping inference.")
-            return True
+        logger.info(f"File {fpath} already exists. Skipping inference.")
+        return True
 
     return False
 
@@ -245,7 +243,8 @@ def get_output_dir_path(args, **kwargs):
     if kwargs.get("identifier"):
         path_components.append(kwargs.get("identifier"))
 
-    if args.dataset_name == "vqa_v2" and args.chunk_id is not None:
+    if args.chunk_id is not None:
+        path_components.append("chunked")
         path_components.append(f"chunk{args.chunk_id}")
 
     # Join all path components together
@@ -253,15 +252,15 @@ def get_output_dir_path(args, **kwargs):
     return dir_path
 
 
-def save_to_json(json_path, all_results):
+def save_to_json(json_path: str, all_results):
     os.makedirs(os.path.dirname(json_path), exist_ok=True)
     with open(json_path, "w") as f:
-        json.dump(all_results, f, cls=CustomEncoder, indent=2)
+        json.dump(all_results, f, cls=CustomJsonEncoder, indent=2)
 
     logger.info(f"Saved the output to {json_path}")
 
 
-def save_vqa_answers(output_dir, dataset_name, predictions, vicuna_ans_parser=False):
+def save_vqa_answers(output_dir: str, dataset_name: str, predictions, vicuna_ans_parser: bool = False):
     """
     Saves the predictions in a format that is compatible with the VQA accuracy computation script.
     """
@@ -273,31 +272,86 @@ def save_vqa_answers(output_dir, dataset_name, predictions, vicuna_ans_parser=Fa
     # Infer the type of question_id from the type of the first key in predictions
     converter = str if isinstance(next(iter(predictions)), str) else int
 
+    # Use a new list to store annotations that have a matching question_id in predictions
+    new_annotations = []
+
     for ann in answer_data["annotations"]:
-        question_id = ann["question_id"]
         question_id = converter(ann["question_id"])
 
         if question_id not in predictions:
-            logger.info("warning: missing question_id: %s" % question_id)
+            logger.debug("warning: missing question_id: %s" % question_id)
             continue
 
         pred_key = "raw_prediction" if dataset_name == "vqa_v2" and not vicuna_ans_parser else "prediction"
         answer = predictions[question_id][pred_key]
         ann["answer"] = answer
 
+        # Add the annotation to the new list
+        new_annotations.append(ann)
+
     answer_fpath = os.path.join(output_dir, "annotations+vqa_answers.json")
-    save_to_json(answer_fpath, answer_data["annotations"])
+    save_to_json(answer_fpath, new_annotations)
 
 
-def save_vqa_answers_chunked(output_dir, chunk_id, predictions):
+def save_predictions(output_dir: str, predictions):
+    with open(os.path.join(output_dir, "predictions.json"), "w") as f:
+        json.dump(predictions, f, indent=2)
+
+
+def save_vqa_answers_aggregate_chunks(output_dir: str, dataset_name: str, vicuna_ans_parser: bool = False):
     """
     Saves the predictions in a format that is compatible with the VQA accuracy computation script.
     """
-    answer_fpath = os.path.join(output_dir, f"prediction_chunk{chunk_id}.json")
-    save_to_json(answer_fpath, predictions)
+
+    output_dir = os.path.dirname(output_dir)  # remove the chunked_[id] directory
+    chunked_filepaths = [
+        os.path.join(output_dir, dir_name, "predictions.json")
+        for dir_name in os.listdir(output_dir)
+        if os.path.exists(os.path.join(output_dir, dir_name, "predictions.json"))
+    ]
+
+    logger.info(f"Found {len(chunked_filepaths)} chunked files")
+
+    predictions = {}
+    for filepath in chunked_filepaths:
+        with open(filepath, "r") as f:
+            curr_predictions = json.load(f)
+        predictions.update(curr_predictions)
+
+    annotation_file = DATASET_CONFIG[dataset_name]["val"]["annotation_file"]
+    annotation_data_path = os.path.join(VQA_DATASET_DIR, "datasets", dataset_name, annotation_file)
+    with open(annotation_data_path) as f:
+        answer_data = json.load(f)
+
+    # Infer the type of question_id from the type of the first key in predictions
+    converter = str if isinstance(next(iter(predictions)), str) else int
+
+    # Use a new list to store annotations that have a matching question_id in predictions
+    new_annotations = []
+
+    for ann in answer_data["annotations"]:
+        question_id = converter(ann["question_id"])
+
+        if question_id not in predictions:
+            logger.debug("warning: missing question_id: %s" % question_id)
+            continue
+
+        pred_key = "raw_prediction" if dataset_name == "vqa_v2" and not vicuna_ans_parser else "prediction"
+        answer = predictions[question_id][pred_key]
+        ann["answer"] = answer
+
+        # Add the annotation to the new list
+        new_annotations.append(ann)
+
+    # save only the total predictions match the original annotations
+    if len(new_annotations) == len(answer_data["annotations"]):
+        prediction_fpath = os.path.join(output_dir, "predictions.json")
+        answer_fpath = os.path.join(output_dir, "annotations+vqa_answers.json")
+        save_to_json(prediction_fpath, predictions)
+        save_to_json(answer_fpath, new_annotations)
 
 
-def save_gqa_answers(output_dir, dataset_name, predictions):
+def save_gqa_answers(output_dir: str, dataset_name: str, predictions):
     """
     Saves the predictions in a format that is compatible with the VQA accuracy computation script.
     """
@@ -337,3 +391,34 @@ def get_autocast_dtype():
     if torch.cuda.is_bf16_supported():
         return torch.bfloat16
     return torch.float16
+
+
+def format_last_predictions(
+    questions: List[str],
+    generated_outputs: Union[List[str], List[List[str]]],
+    num_return_sequences: int,
+    num_last_items=5,
+):
+    """
+    Extract and format the last few predictions.
+
+    Parameters:
+    - questions (list): List of question strings.
+    - generated_outputs (list): List of generated output strings.
+    - num_last_items (int): Number of last items to retrieve. Default is 5.
+
+    Returns:
+    - formatted_messages (list): List of formatted prediction strings.
+    """
+    last_questions = questions[-num_last_items:]
+    last_generated_outputs = [
+        generated_outputs[i : i + num_return_sequences]
+        for i in range(-num_last_items * num_return_sequences, 0, num_return_sequences)
+    ]
+
+    formatted_messages = []
+    for question, outputs in zip(last_questions, last_generated_outputs):
+        for pred in outputs:
+            formatted_messages.append(f"question = {question}, prediction = {pred}")
+
+    return "\n".join(formatted_messages)

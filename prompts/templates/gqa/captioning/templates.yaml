@@ -1,5 +1,5 @@
 dataset: gqa
-subset: caption
+subset: captioning
 
 templates:
   c4a4b2f1-9c99-44a8-9f7b-43b58ce238d2: !Template

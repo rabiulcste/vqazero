@@ -1,5 +1,5 @@
 dataset: winoground
-subset: caption
+subset: captioning
 
 templates:
   0c0b0b0b-0d25-431b-ad2c-1daaf6ae88bb: !Template

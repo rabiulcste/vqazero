@@ -2,7 +2,7 @@ import json
 import os
 import random
 from collections import Counter, defaultdict
-from typing import Dict, List
+from typing import Dict, List, Union
 
 from tqdm import tqdm
 
@@ -15,13 +15,13 @@ logger = Logger(__name__)
 random.seed(42)
 
 
-def get_vqa_dataset(dataset_name: str, split: str, multiple_choice: bool = False) -> List[Dict]:
+def get_vqa_dataset(dataset_name: str, split: str, multiple_choice: bool = False, chunk_id=None) -> List[Dict]:
     if dataset_name == "aokvqa":
-        dataset = load_aokvqa_dataset_from_json(dataset_name, split, multiple_choice)
+        dataset = load_aokvqa_dataset_from_json(dataset_name, split, multiple_choice=multiple_choice, chunk_id=chunk_id)
     elif dataset_name == "visual7w":
-        dataset = load_visual7w_dataset_from_json(dataset_name, split, multiple_choice)
+        dataset = load_visual7w_dataset_from_json(dataset_name, split, multiple_choice=multiple_choice)
     elif dataset_name in ["vqa_v2", "okvqa"]:
-        dataset = load_vqa_dataset_from_json(dataset_name, split)
+        dataset = load_vqa_dataset_from_json(dataset_name, split, chunk_id=chunk_id)
     elif dataset_name == "gqa":
         dataset = load_gqa_dataset_from_json(dataset_name, split)
     else:
@@ -30,8 +30,20 @@ def get_vqa_dataset(dataset_name: str, split: str, multiple_choice: bool = False
     return dataset
 
 
-def get_coco_path_image_id(coco_dir, split, image_id):
+def get_coco_path_image_id(coco_dir: str, split: str, image_id):
     return os.path.join(coco_dir, f"{split}2017", f"{image_id:012}.jpg")
+
+
+def get_chunked_question_ids(dataset_dir: str, split: str, chunk_id: Union[int, None] = None):
+    chunked_question_ids = []
+    if chunk_id is not None:
+        chunked_question_ids_fpath = os.path.join(dataset_dir, f"chunked_question_ids_{split}.json")
+        with open(chunked_question_ids_fpath) as f:
+            chunked_data = json.load(f)
+        chunked_question_ids = chunked_data[chunk_id]
+        logger.info(f"Loading chunk {chunk_id} of {len(chunked_data)} from {split} split")
+
+    return chunked_question_ids
 
 
 def get_most_common_item(lst):
@@ -48,7 +60,9 @@ def get_most_common_item(lst):
     return most_common_item
 
 
-def load_aokvqa_dataset_from_json(dataset_name, split, multiple_choice, version="v1p0") -> List[Dict]:
+def load_aokvqa_dataset_from_json(
+    dataset_name: str, split: str, multiple_choice: bool, version="v1p0", chunk_id=None
+) -> List[Dict]:
     """
     Builds a dataset from a JSON file using the AOKVQA dataset format.
     Returns:
@@ -60,10 +74,15 @@ def load_aokvqa_dataset_from_json(dataset_name, split, multiple_choice, version=
     dataset = json.load(open(os.path.join(dataset_dir, f"aokvqa_{version}_{split}.json")))
     coco_dir = os.path.join(COCO_DATASET_DIR, "images")
 
+    chunked_question_ids = get_chunked_question_ids(dataset_dir, split, chunk_id)
+
     qa_objects = []
     for qa_obj in tqdm(dataset, desc=f"Preprocessing {dataset_name} dataset"):
-        image_id = qa_obj["image_id"]
         question_id = qa_obj["question_id"]
+        if chunk_id is not None and question_id not in chunked_question_ids:
+            continue
+
+        image_id = qa_obj["image_id"]
         question = qa_obj["question"]
         choices = qa_obj["choices"]
         if multiple_choice:
@@ -73,6 +92,7 @@ def load_aokvqa_dataset_from_json(dataset_name, split, multiple_choice, version=
         random.shuffle(choices)
         image_path = get_coco_path_image_id(coco_dir, split, image_id)
         qa_dict = {
+            "image_id": image_id,
             "question_id": question_id,
             "question": question,
             "image_path": image_path,
@@ -88,23 +108,18 @@ def load_aokvqa_dataset_from_json(dataset_name, split, multiple_choice, version=
     return qa_objects
 
 
-def load_vqa_dataset_from_json(dataset_name, split: str, chunk_id=None) -> List[Dict]:
-    dataset_dir = os.path.join(VQA_DATASET_DIR, "datasets")
+def load_vqa_dataset_from_json(dataset_name: str, split: str, chunk_id=None) -> List[Dict]:
+    dataset_dir = os.path.join(VQA_DATASET_DIR, "datasets", dataset_name)
     question_file = DATASET_CONFIG[dataset_name][split]["question_file"]
     annotation_file = DATASET_CONFIG[dataset_name][split]["annotation_file"]
     image_dir = DATASET_CONFIG[dataset_name][split]["image_root"]
     coco_prefix = DATASET_CONFIG[dataset_name][split]["image_prefix"]
 
-    question_data_fpath = os.path.join(dataset_dir, dataset_name, question_file)
-    annotation_data_fpath = os.path.join(dataset_dir, dataset_name, annotation_file)
+    question_data_fpath = os.path.join(dataset_dir, question_file)
+    annotation_data_fpath = os.path.join(dataset_dir, annotation_file)
     image_root = os.path.join(COCO_DATASET_DIR, "images", image_dir)
 
-    # vqa v2 chunked dataset
-    if chunk_id is not None:
-        chunked_question_ids_fpath = os.path.join(dataset_dir, dataset_name, "chunked_question_ids.json")
-        with open(chunked_question_ids_fpath) as f:
-            chunked_data = json.load(f)
-        chunked_question_ids = chunked_data[chunk_id]
+    chunked_question_ids = get_chunked_question_ids(dataset_dir, split, chunk_id)
 
     with open(question_data_fpath) as f:
         question_data = json.load(f)
@@ -120,11 +135,10 @@ def load_vqa_dataset_from_json(dataset_name, split: str, chunk_id=None) -> List[
 
     dataset = []
     for qa_obj in tqdm(question_data["questions"], desc=f"Preprocessing {dataset_name} dataset"):
-        image_id = qa_obj["image_id"]
         question_id = qa_obj["question_id"]
-        if dataset_name == "vqa_v2" and chunk_id is not None and split != "train":
-            if question_id not in chunked_question_ids:
-                continue
+        if chunk_id is not None and question_id not in chunked_question_ids:
+            continue
+        image_id = qa_obj["image_id"]
         image_path = os.path.join(image_root, coco_prefix + "{:012d}".format(image_id) + ".jpg")
         qa_obj.update({"image_path": image_path})  # adding image path to the question object
 
@@ -133,17 +147,12 @@ def load_vqa_dataset_from_json(dataset_name, split: str, chunk_id=None) -> List[
         qa_obj.update(answer_data)
         dataset.append(qa_obj)
 
-    if split == "train":
-        random.shuffle(dataset)
-        dataset = dataset[:5000]  # cut off the dataset to 5000 samples for nearest neighbor search
-        logger.warning("WARNING: Truncating train dataset to 5000 samples")
-
     logger.info(json.dumps(dataset[0], indent=4))
 
     return dataset
 
 
-def load_gqa_dataset_from_json(dataset_name, split) -> List[Dict]:
+def load_gqa_dataset_from_json(dataset_name: str, split: str) -> List[Dict]:
     dataset_dir = os.path.join(VQA_DATASET_DIR, "datasets")
     annotation_file = DATASET_CONFIG[dataset_name][split]["annotation_file"]
     image_dir = DATASET_CONFIG[dataset_name][split]["image_root"]
@@ -174,7 +183,7 @@ def load_gqa_dataset_from_json(dataset_name, split) -> List[Dict]:
     return dataset
 
 
-def load_visual7w_dataset_from_json(dataset_name, split, multiple_choice: bool = True) -> List[Dict]:
+def load_visual7w_dataset_from_json(dataset_name: str, split: str, multiple_choice: bool = True) -> List[Dict]:
     dataset_root = "datasets"
     fname = os.path.join(VQA_DATASET_DIR, dataset_root, dataset_name, "dataset.json")
     dataset = json.load(open(fname, "r"))

@@ -4,8 +4,9 @@ MAX_LENGTH = "max_length"
 LENGTH_PENALTY = "length_penalty"
 NO_REPEAT_NGRAM_SIZE = "no_repeat_ngram_size"
 NUM_BEAMS = "num_beams"
-NUM_CAPTIONS = "num_captions"
+NUM_RETURN_SEQUENCES = "num_return_sequences"
 TEMPERATURE = "temperature"
+DO_SAMPLE = "do_sample"
 
 
 class VQAConfigManager:
@@ -22,11 +23,13 @@ class VQAConfigManager:
         """
         return {
             NUM_BEAMS: 5,
-            NUM_CAPTIONS: 1,
+            NUM_RETURN_SEQUENCES: 1,
             MAX_LENGTH: 10,
             LENGTH_PENALTY: -1.0,
             NO_REPEAT_NGRAM_SIZE: 0,
             BATCH_SIZE: 64,
+            DO_SAMPLE: False,
+            TEMPERATURE: 1.0,
         }
 
     def _config_updater(func):
@@ -63,9 +66,21 @@ class VQAConfigManager:
         if "rationale" not in self.args.prompt_name:
             if "xxl" in self.args.model_name or "kosmos" in self.args.model_name or "redpajama" in self.args.model_name:
                 updates[BATCH_SIZE] = 16
+            if "67b" in self.args.model_name:
+                updates[BATCH_SIZE] = 8
             if "llava" in self.args.model_name:
                 updates.update({MAX_LENGTH: 30})
             if "open_flamingo" in self.args.model_name:
+                updates.update({MAX_LENGTH: 30})
+
+        if "rationale" not in self.args.prompt_name and self.args.gen_model_name:
+            if "xxl" in self.args.gen_model_name or "kosmos" in self.args.gen_model_name or "redpajama" in self.args.gen_model_name:
+                updates[BATCH_SIZE] = 16
+            if "67b" in self.args.gen_model_name:
+                updates[BATCH_SIZE] = 8
+            if "llava" in self.args.gen_model_name:
+                updates.update({MAX_LENGTH: 30})
+            if "open_flamingo" in self.args.gen_model_name:
                 updates.update({MAX_LENGTH: 30})
         return updates
 
@@ -84,7 +99,7 @@ class VQAConfigManager:
     @_config_updater
     def _update_based_on_self_consistency(self):
         if self.args.self_consistency:
-            return {NUM_BEAMS: 1, NUM_CAPTIONS: 30, TEMPERATURE: 0.7}
+            return {NUM_BEAMS: 1, NUM_RETURN_SEQUENCES: 30, TEMPERATURE: 0.7, DO_SAMPLE: True}
         return {}
 
     def update_configs(self) -> dict:

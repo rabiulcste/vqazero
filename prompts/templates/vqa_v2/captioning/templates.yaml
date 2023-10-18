@@ -1,5 +1,5 @@
 dataset: vqa_v2
-subset: caption
+subset: captioning
 
 templates:
   c4a4b2f1-9c99-44a8-9f7b-43b58ce238d2: !Template
@@ -113,7 +113,6 @@ templates:
       choices_in_prompt: false
     name: prefix_promptcap_a_photo_of 
 
-
   5f5e7b5d-bccb-4e52-8e01-7c5e9c9d5232: !Template
     id: 5f5e7b5d-bccb-4e52-8e01-7c5e9c9d5232
     jinja: 'Please describe this image according to the given question: {{ question }}'
@@ -122,6 +121,13 @@ templates:
     name: prefix_promptcap
     author: Rabiul Awal
       
+  6f7d8c9a-0b1b-2a3c-4d5e-6f7d8c9a0b1b: !Template
+    id: 6f7d8c9a-0b1b-2a3c-4d5e-6f7d8c9a0b1b
+    jinja: 'Please describe this image in great details to answer the given question: {{ question }} A photo of'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_promptcap_in_details_a_photo_of
+
   3d2e1c4b-5f6e-7d8c-9a0b-1b2a3c4d5e6f: !Template
     id: 3d2e1c4b-5f6e-7d8c-9a0b-1b2a3c4d5e6f
     jinja: 'A photo of'

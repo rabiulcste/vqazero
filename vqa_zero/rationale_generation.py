@@ -5,22 +5,23 @@ import time
 from typing import List, Union
 
 import torch
-from dataset_zoo.custom_dataset import VQADataset, collate_fn
 from thefuzz import fuzz
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformers import AutoProcessor, Blip2ForConditionalGeneration
+
+from dataset_zoo.custom_dataset import VQADataset, collate_fn
+from evals.answer_postprocess import extract_answer_from_cot
 from utils.config import OUTPUT_DIR
 from utils.globals import MODEL_CLS_INFO
 from utils.handler import PromptingHandler
 from utils.logger import Logger
-from evals.answer_postprocess import extract_answer_from_cot
-
 
 logger = Logger(__name__)
 
 
 N = 5
+
 
 class ChainOfThoughtGenerator:
     """
@@ -232,7 +233,7 @@ class ChainOfThoughtGenerator:
             "cache",
             "generated_rationale_dumps",
             self.args.dataset_name,
-            self.args.gen_model_name, 
+            self.args.gen_model_name,
             self.args.vqa_format,
             subdir_prefix,
             split,

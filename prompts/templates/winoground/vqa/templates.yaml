@@ -1,105 +1,40 @@
 dataset: winoground
-subset: basic
+subset: vqa
 
 templates:
-  5459237b-97de-4340-bf7b-2939c3f7ca19: !Template
-    id: 5459237b-97de-4340-bf7b-2939c3f7ca19
-    jinja: 'Caption: "{{ caption }}." Question: Does the caption match the image? Answer: Yes or no?'
-    metadata: !TemplateMetadata
-      choices_in_prompt: true
-    name: cq_does_caption_match 
-    author: Rabiul Awal
-
-
-  e4c96d4b-8c2f-4ca4-94d7-27354ca04c3f: !Template
-    id: e4c96d4b-8c2f-4ca4-94d7-27354ca04c3f
-    jinja: 'Caption: "{{ caption }}." Question: Does the caption match the image?'
-    metadata: !TemplateMetadata
-      choices_in_prompt: false
-    name: cq_does_caption_match_wo_answer
-    author: Rabiul Awal
-
-
   d74aee05-464c-49df-8b94-33b0f8c04f28: !Template
     id: d74aee05-464c-49df-8b94-33b0f8c04f28
-    jinja: 'Caption: "{{ caption }}." Does the caption match the image? Answer: Yes or no?'
+    jinja: 'Image description: "{{ caption }}." Does the description match the image? Answer: Yes or no?'
     metadata: !TemplateMetadata
       choices_in_prompt: true
-    name: c_does_caption_match 
-    author: Rabiul Awal
-
-  e0cf44f4-5b5d-4d01-8c67-f9a9ef1e2b0d: !Template
-    id: e0cf44f4-5b5d-4d01-8c67-f9a9ef1e2b0d
-    jinja: 'Caption: "{{ caption }}." Does the caption match the image?'
-    metadata: !TemplateMetadata
-      choices_in_prompt: false
-    name: c_does_caption_match_wo_answer
-    author: Rabiul Awal
-
-  e9d3cbe1-099e-486c-96f7-a0cd7b68e8ea: !Template
-    id: e9d3cbe1-099e-486c-96f7-a0cd7b68e8ea
-    jinja: '"{{ caption }}." Does the caption match the image? Answer:'
-    metadata: !TemplateMetadata
-      choices_in_prompt: false
-    name: does_caption_match 
-    author: Rabiul Awal
-
-  a4b0f823-e9da-4306-8550-4df4c436031c: !Template
-    id: a4b0f823-e9da-4306-8550-4df4c436031c
-    jinja: '"{{ caption }}." Does the caption match the image?'
-    metadata: !TemplateMetadata
-      choices_in_prompt: false
-    name: does_caption_match_wo_answer
+    name: description_match_yn 
     author: Rabiul Awal
 
   8d53e4d4-4a03-4b07-8e38-6e47d6f1a3d3: !Template
     id: 8d53e4d4-4a03-4b07-8e38-6e47d6f1a3d3
-    jinja: 'Does the caption match the image "{{ caption }}"? Answer:'
+    jinja: 'Does the description match the image "{{ caption }}"? Answer:'
     metadata: !TemplateMetadata
       choices_in_prompt: false
-    name: does_caption_match_end
+    name: description_match
     author: Rabiul Awal
-
-  0b9e0b3c-3f1d-466c-a8a6-42c6f74db5e5: !Template
-    id: 0b9e0b3c-3f1d-466c-a8a6-42c6f74db5e5
-    jinja: 'Does the caption match the image "{{ caption }}"?'
-    metadata: !TemplateMetadata
-      choices_in_prompt: false
-    name: does_caption_match_wo_answer_end
-    author: Rabiul Awal
-
 
   e6a61f15-eb60-4f9d-9bfe-c107b6cbf764: !Template
     id: e6a61f15-eb60-4f9d-9bfe-c107b6cbf764
     jinja: 'Does this describe the image "{{ caption }}"? Answer:'
     metadata: !TemplateMetadata
       choices_in_prompt: false
-    name: does_describe_image_end
+    name: this_describe_image_answer
     author: Rabiul Awal
 
-  20d9de07-b94a-4147-a52d-020c8e47b88e: !Template
-    id: 20d9de07-b94a-4147-a52d-020c8e47b88e
-    jinja: 'Does this describe the image "{{ caption }}"?'
-    metadata: !TemplateMetadata
-      choices_in_prompt: false
-    name: does_describe_image_wo_answer_end
-    author: Rabiul Awal
 
   e7d34b13-1f7c-4b54-9257-8d811d31b501: !Template
     id: e7d34b13-1f7c-4b54-9257-8d811d31b501
-    jinja: "Does the caption '{{caption}}' accurately describe the image? Please answer yes or no."
+    jinja: "Does the description '{{caption}}' accurately describe the image? Please answer yes or no."
     metadata:
       choices_in_prompt: true
-    name: accurately_describe_image
+    name: accurately_describe_image_yn
     author: Rabiul Awal
 
-  73bb7c1e-27f7-4f15-84d2-9c856ef29e39: !Template
-    id: 73bb7c1e-27f7-4f15-84d2-9c856ef29e39
-    jinja: "Does the caption '{{caption}}' accurately describe the image?"
-    metadata:
-      choices_in_prompt: true
-    name: accurately_describe_image_wo_answer
-    author: Rabiul Awal
 
   63c19392-37a3-4b6f-b1b2-99af9c3e04c3: !Template
     id: 63c19392-37a3-4b6f-b1b2-99af9c3e04c3
@@ -111,14 +46,6 @@ templates:
 
   a5695751-8115-424c-9ce5-aaaa09a6fcf1: !Template
     id: a5695751-8115-424c-9ce5-aaaa09a6fcf1
-    jinja: "Does this '{{caption}}' accurately describe the image? "
-    metadata:
-      choices_in_prompt: true
-    name: this_accurately_describe_image_wo_answer_end
-    author: Rabiul Awal
-
-  286f97ec-13b8-4555-b214-1ca654b0122f: !Template
-    id: 286f97ec-13b8-4555-b214-1ca654b0122f
     jinja: "Does this '{{caption}}' accurately describe the image?"
     metadata:
       choices_in_prompt: true
@@ -131,33 +58,16 @@ templates:
     jinja: '"{{ caption }}." Is it true about this image? Answer in yes/no.'
     metadata: !TemplateMetadata
       choices_in_prompt: false
-    name: is_true_image
-    author: Rabiul Awal
-
-  4c4c68b8-945f-4d70-b0c4-79929b68f6c1: !Template
-    id: 4c4c68b8-945f-4d70-b0c4-79929b68f6c1
-    jinja: '"{{ caption }}." Is it true about this image?'
-    metadata: !TemplateMetadata
-      choices_in_prompt: false
-    name: is_true_image_wo_choices
+    name: is_true_image_yn
     author: Rabiul Awal
 
 
   22a2c2e1-76cc-463a-8f87-aa7140d005f9: !Template
     id: 22a2c2e1-76cc-463a-8f87-aa7140d005f9
-    jinja: 'Is it true about this image "{{ caption }}"? Answer in yes/no.'
+    jinja: 'Is this true about the image "{{ caption }}"? Answer in yes/no.'
     metadata: !TemplateMetadata
       choices_in_prompt: false
-    name: is_true_image_end
-    author: Rabiul Awal
-
-
-  a2a77a2b-93b5-4c5d-9d3e-b9c6d09fc758: !Template
-    id: a2a77a2b-93b5-4c5d-9d3e-b9c6d09fc758
-    jinja: 'Is it true about this image "{{ caption }}"?'
-    metadata: !TemplateMetadata
-      choices_in_prompt: false
-    name: is_true_image_wo_choices_end
+    name: is_true_image_yn
     author: Rabiul Awal
 
 
@@ -182,7 +92,7 @@ templates:
     jinja: 'Answer the following yes/no question. {{ question }}'
     metadata: !TemplateMetadata
       choices_in_prompt: false
-    name: prefix_following_yn_qa
+    name: prefix_following_qa_yn
     author: Rabiul Awal
 
 
@@ -191,7 +101,15 @@ templates:
     jinja: 'Question: {{ question }} Answer: Yes or no?'
     metadata: !TemplateMetadata
       choices_in_prompt: false
-    name: prefix_yn_qa
+    name: prefix_qa_yn
+    author: Rabiul Awal
+
+  a9e75320-7b22-4b3e-a1e5-6cde7c8e92d2: !Template
+    id: a9e75320-7b22-4b3e-a1e5-6cde7c8e92d2
+    jinja: 'Question: {{ question }} Answer:'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_qa_answer
     author: Rabiul Awal
 
   47b3a526-3d3f-4419-bf06-12c8e1cb2a6b: !Template
