@@ -69,9 +69,7 @@ class QuestionGeneratorforWinoground:
             self.tokenizer = tokenizer_class.from_pretrained(model_name_or_path)
             self.model_name = model_name_or_path
         else:
-            raise ValueError(
-                f"Invalid model_type '{self.model_type}'. Must be one of {MODEL_CLASSES.keys()}."
-            )
+            raise ValueError(f"Invalid model_type '{self.model_type}'. Must be one of {MODEL_CLASSES.keys()}.")
 
     def generate_questions(self, winoground_dataset: Dataset, handler: PromptingHandler, output_dir: str):
         output_json = {}
@@ -184,9 +182,7 @@ class QuestionGeneratorforWinoground:
 
     def build_rational_statement(self, prompt, questions):
         prompt_rational = self.prompt.templates[2]
-        prompt = prompt_rational.prompt.replace("QUESTION_0", questions[0]).replace(
-            "QUESTION_1", questions[1]
-        )
+        prompt = prompt_rational.prompt.replace("QUESTION_0", questions[0]).replace("QUESTION_1", questions[1])
         response = self.gpt.submit_request(prompt=prompt, max_tokens=100)
         rational_statement = response.choices[0].text.strip()
         return rational_statement
@@ -256,9 +252,7 @@ class DecomposeGeneratorForWinoground:
             self.model = model_class.from_pretrained(model_name_or_path)
             self.tokenizer = tokenizer_class.from_pretrained(model_name_or_path)
         else:
-            raise ValueError(
-                f"Invalid model_type '{self.model_type}'. Must be one of {MODEL_CLASSES.keys()}."
-            )
+            raise ValueError(f"Invalid model_type '{self.model_type}'. Must be one of {MODEL_CLASSES.keys()}.")
 
     def print_sample_generated_questions(self, prompt_name: str):
         subquestion_dir = os.path.join(self.question_data_dir, prompt_name, self.gen_model_name, "by_id")
@@ -388,14 +382,18 @@ class DecomposeGeneratorForWinoground:
 
     # load the generated decomposed subquestions from the output file
     def _get_vqa_prediction_data(self, prompt_name: str, decomposition_type: str):
-        fname = os.path.join(self.vqa_data_dir, prompt_name, decomposition_type, self.gen_model_name, "output_final.json")
+        fname = os.path.join(
+            self.vqa_data_dir, prompt_name, decomposition_type, self.gen_model_name, "output_final.json"
+        )
         with open(fname, "r") as f:
             output_json = json.load(f)
         return output_json
 
     # call the API to generate rationales on the vqa outputs: decomposed subquestions and corresponding answers
     def generate_rationale(self, prompt_name: str, decomposition_type: str):
-        json_path = os.path.join(self.vqa_data_dir, prompt_name, decomposition_type, self.gen_model_name, "output_final.json")
+        json_path = os.path.join(
+            self.vqa_data_dir, prompt_name, decomposition_type, self.gen_model_name, "output_final.json"
+        )
 
         if os.path.exists(json_path):
             logger.info(f"Rationale already exists at {json_path}. Skipping...")
@@ -408,9 +406,7 @@ class DecomposeGeneratorForWinoground:
         WINOGROUND_TEST_SIZE = 400
 
         for wid in range(WINOGROUND_TEST_SIZE):
-            data = self.get_input_data_for_rationale_generation_by_id(
-                prompt_name, decomposition_type, str(wid)
-            )
+            data = self.get_input_data_for_rationale_generation_by_id(prompt_name, decomposition_type, str(wid))
             logger.debug(json.dumps(data, indent=4))
 
             save_path = os.path.join(
@@ -477,8 +473,7 @@ class DecomposeGeneratorForWinoground:
         logger.debug(f"curr_decomposed_answers: {curr_decomposed_answers}")
 
         qa_pairs = [
-            f"{q} \n {a} \n "
-            for qaid, (q, a) in enumerate(zip(curr_decomposed_questions, curr_decomposed_answers))
+            f"{q} \n {a} \n " for qaid, (q, a) in enumerate(zip(curr_decomposed_questions, curr_decomposed_answers))
         ]
         qa_pairs = "".join(qa_pairs)
         logger.debug(f"qa_pairs: {qa_pairs}")
@@ -514,7 +509,11 @@ class DecomposeGeneratorForWinoground:
         return text
 
     def _aggregate_by_id_json_files_to_output_json(
-        self, data_dir, prompt_name: str, suffix: str = "", decomposition_type: str = "",
+        self,
+        data_dir,
+        prompt_name: str,
+        suffix: str = "",
+        decomposition_type: str = "",
     ):
         """
         the output.json file will be in the format of
@@ -541,13 +540,17 @@ class DecomposeGeneratorForWinoground:
             with open(json_path, "r") as f:
                 data = json.load(f)
             output_json[data["id"]] = data
-        output_json_path = os.path.join(data_dir, prompt_name, decomposition_type, self.gen_model_name, f"output{suffix}.json")
+        output_json_path = os.path.join(
+            data_dir, prompt_name, decomposition_type, self.gen_model_name, f"output{suffix}.json"
+        )
 
         logger.info(f"Saved aggregated json at {output_json_path}")
         self._save_output_json(output_json, output_json_path)
 
     def generate_eval(self, prompt_name: str, decomposition_type: str):
-        json_path = os.path.join(self.vqa_data_dir, prompt_name, decomposition_type, self.gen_model_name, "output_final.json")
+        json_path = os.path.join(
+            self.vqa_data_dir, prompt_name, decomposition_type, self.gen_model_name, "output_final.json"
+        )
         if not os.path.exists(json_path):
             logger.info(f"Final answer file doesn't exist at {json_path}. Skipping...")
             return
@@ -569,9 +572,7 @@ class DecomposeGeneratorForWinoground:
     def _compute_eval(self, winoground_blip_scores, prompt_name: str, decomposition_type: str):
         # Convert winoground_blip_scores to pandas DataFrame and save it as a CSV file
         df = pd.DataFrame(winoground_blip_scores)
-        csv_path = os.path.join(
-            self.vqa_data_dir, prompt_name, decomposition_type, "winoground_blip_score.csv"
-        )
+        csv_path = os.path.join(self.vqa_data_dir, prompt_name, decomposition_type, "winoground_blip_score.csv")
         df.to_csv(csv_path, index=False)
         logger.info(f"Saved the VQA output to {csv_path}")
 
@@ -679,9 +680,7 @@ class CaptionGeneratorforWinoground:
     def __init__(self, model_name, device):
         self.model_name = model_name
         self.output_dir = os.path.join("output", "generated_captions", self.model_name)
-        self.dataset = load_dataset("facebook/winoground", use_auth_token=True)[
-            "test"
-        ]  # winoground-dataset
+        self.dataset = load_dataset("facebook/winoground", use_auth_token=True)["test"]  # winoground-dataset
         self.model, self.vis_processors = self.load_model_and_processors(model_name, device)
 
     def load_model_and_processors(self, model_cls_name, device):

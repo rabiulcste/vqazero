@@ -1,8 +1,9 @@
 import json
 import re
 import string
+from collections import Counter
 from functools import reduce
-from typing import List
+from typing import List, Union
 
 dont_change_list = ["left"]
 
@@ -61,18 +62,18 @@ class VQAAnswerProcessor:
         spacy.prefer_gpu()
         self.lemmatizer = spacy.load("en_core_web_sm", disable=["parser", "ner"])
 
-    def process(self, dataset_name, answers: List[str], questions=None):
-        answers = [self.fix_prefix(answer) for answer in answers]
+    def process(self, dataset_name: str, answers: List[str], questions=None):
+        answers = [self.strip_prefix(answer) for answer in answers]
 
         if questions is not None:
             if dataset_name == "aokvqa":
-                answers = [self.extract_before_or(answer) for answer in answers]
+                answers = [self.extract_text_before_or(answer) for answer in answers]
 
             if dataset_name in ["okvqa", "gqa"]:
-                answers = self.remove_matching_noun_suffix_from_answers(answers, questions)
+                answers = self.strip_matching_noun_suffixes(answers, questions)
 
             if dataset_name in ["okvqa"] and questions:
-                answers = self.lemmatize(answers)
+                answers = self.lemmatize_answer_texts(answers)
 
         answers = [process_digit_article(pred) for pred in answers]
         answers = [input_string.strip(string.punctuation) for input_string in answers]  # remove punctuation
@@ -81,7 +82,7 @@ class VQAAnswerProcessor:
 
         return answers
 
-    def lemmatize_single(self, input_string):
+    def lemmatize_text(self, input_string: str):
         doc = self.lemmatizer(input_string)
         words = []
         for token in doc:
@@ -95,7 +96,7 @@ class VQAAnswerProcessor:
 
         return lemmatized_answer
 
-    def lemmatize(self, answers):
+    def lemmatize_answer_texts(self, answers: List[str]):
         lemmatized_answers = []
         dont_change_set = set(dont_change_list)
         for doc in self.lemmatizer.pipe(answers, n_process=-1):
@@ -112,7 +113,7 @@ class VQAAnswerProcessor:
 
         return lemmatized_answers
 
-    def remove_matching_noun_suffix_from_answers(self, answers, questions):
+    def strip_matching_noun_suffixes(self, answers, questions):
         """Remove answer suffix if it is a noun found in the corresponding question."""
         question_nouns = [
             {token.text for token in doc if token.pos_ == "NOUN"}
@@ -136,7 +137,7 @@ class VQAAnswerProcessor:
         return processed_answers
 
     @staticmethod
-    def extract_before_or(text: str) -> str:
+    def extract_text_before_or(text: str) -> str:
         """
         If the word 'or' exists in a string, return the part before 'or'.
         Otherwise, return an empty string.
@@ -151,7 +152,7 @@ class VQAAnswerProcessor:
         return match.group(1).strip() if match else text
 
     @staticmethod
-    def remove_punctuation(word):
+    def strip_punctuation(word):
         # Define a regular expression pattern that matches punctuation marks at the beginning or end of the word
         pattern = r"^[\W_]+|[\W_]+$"
 
@@ -159,7 +160,7 @@ class VQAAnswerProcessor:
         return re.sub(pattern, "", word)
 
     @staticmethod
-    def fix_prefix(answer):
+    def strip_prefix(answer):
         """Remove a prefix word from an answer string if it matches a list of known prefixes."""
         answer = str(answer)  # making sure it is a string
         prefix_list = ["to", "in", "at"]
@@ -170,7 +171,7 @@ class VQAAnswerProcessor:
         return " ".join(answer)
 
     @staticmethod
-    def remove_articles(answer):
+    def strip_articles(answer):
         """Remove articles from an answer string."""
         pattern = r"^(a|an|the)\s+|\s+(a|an|the)\b"
         answer = re.sub(pattern, "", answer)
@@ -180,8 +181,39 @@ class VQAAnswerProcessor:
 answer_processor = VQAAnswerProcessor()
 
 
-def postprocess_vqa_answers(dataset_name: str, predictions: List[str], questions=None) -> str:
-    return answer_processor.process(dataset_name, predictions, questions)
+# def postprocess_vqa_answers(dataset_name: str, predictions: Union[List[str], List[List[str]]], questions=None) -> str:
+#     return answer_processor.process(dataset_name, predictions, questions)
+
+
+def postprocess_vqa_answers(
+    dataset_name: str, predictions: Union[List[str], List[List[str]]], questions=None
+) -> Union[str, List[str]]:
+    # Determine if predictions is a 2D list (list of lists)
+    is_2d = isinstance(predictions[0], list) if predictions else False
+
+    # Flatten predictions if it's 2D for efficient processing
+    if is_2d:
+        original_shape = [len(sublist) for sublist in predictions]
+        predictions = [ans for sublist in predictions for ans in sublist]
+
+        # Extend or repeat questions to match the size of flattened predictions
+        if questions is not None:
+            questions = [q for q, shape in zip(questions, original_shape) for _ in range(shape)]
+
+    # Process the predictions
+    processed_predictions = answer_processor.process(dataset_name, predictions, questions)
+
+    # If predictions were originally 2D, reshape them back into 2D
+    if is_2d:
+        start_idx = 0
+        reshaped_predictions = []
+        for shape in original_shape:
+            end_idx = start_idx + shape
+            reshaped_predictions.append(processed_predictions[start_idx:end_idx])
+            start_idx = end_idx
+        processed_predictions = reshaped_predictions
+
+    return processed_predictions
 
 
 def extract_rationale_per_question(answers, sz):
@@ -217,12 +249,10 @@ def extract_answer_from_cot(sentence):
     return sentence
 
 
-def majority_vote_with_indices(answers, sz):
-    num_questions = len(answers) // sz
+def majority_vote_with_indices_2d(answers: List[List[str]]):
     results = []
     indices = []
-    for i in range(num_questions):
-        question_answers = answers[i * sz : (i + 1) * sz]
+    for question_answers in answers:
         counts = {}
         for idx, ans in enumerate(question_answers):
             if not ans:
@@ -236,11 +266,31 @@ def majority_vote_with_indices(answers, sz):
         max_ans = [(k, v["indices"]) for k, v in counts.items() if v["count"] == max_count]
         if max_ans:
             results.append(max_ans[0][0])
-            indices.append(i * sz + max_ans[0][1][0])
+            indices.append(max_ans[0][1][0])  # Directly append the index of the answer within question_answers
         else:
             results.append("")
-            indices.append(i * sz)
+            indices.append(0)  # Append 0 or another default value if no answer is found
+
     return results, indices
+
+
+def majority_vote(answers: List[str]):
+    """
+    Find the most common answer in a list of answers.
+
+    Args:
+    - answers (List[str]): A list of answer strings.
+
+    Returns:
+    - str: The most common answer in the input list.
+    """
+    # Count the occurrences of each answer
+    answer_counts = Counter(answers)
+
+    # Find the most common answer
+    most_common_answer, _ = answer_counts.most_common(1)[0] if answer_counts else ("", 0)
+
+    return most_common_answer
 
 
 def postprocess_cleanup_answer(args, predictions, logger):
@@ -248,28 +298,34 @@ def postprocess_cleanup_answer(args, predictions, logger):
     batch = [predictions[qid] for qid in qids]
     output = [data["generated_output"] for data in batch]
 
-    if args.self_consistency:
+    if args.self_consistency:  # only for llava and blip2 models
         logger.info(f"RAW PREDICTION: {json.dumps(output, indent=2)}")
         if "rationale" in args.prompt_name:
-            batch["reasoning_paths"] = extract_rationale_per_question(output, args.num_captions)
-            extracted_answers = [extract_answer_from_cot(prediction) for prediction in output]
-            batch["reasoning_answers"] = extract_rationale_per_question(extracted_answers, args.num_captions)
+            extracted_answers = [[extract_answer_from_cot(i) for i in o_group] for o_group in output]
+            for i, data in enumerate(batch):
+                data["reasoning_paths"] = output[i]
+                data["reasoning_answers"] = extracted_answers[i]
         else:
             extracted_answers = list(output)
+
         processed_answers = postprocess_vqa_answers(args.dataset_name, extracted_answers)
-        majority_answers, indices = majority_vote_with_indices(processed_answers, args.num_captions)
-        batch["raw_prediction"] = [output[i] for i in indices]
-        batch["prediction"] = majority_answers
-        output = batch["raw_prediction"]
+        majority_answers, indices = majority_vote_with_indices_2d(processed_answers)
+
+        for i, data in enumerate(batch):
+            data["raw_prediction"] = output[i][indices[i]]
+            data["prediction"] = majority_answers[i]
 
     else:
         questions = [data["question"] for data in batch]
-
-        if "rationale" in args.prompt_name and "iterative" not in args.prompt_name:
-            output = [extract_answer_from_cot(prediction) for prediction in output]
-
-        partitions = [". ", "Q: ", "Question: "]
-        if args.model_name in ["kosmos2", "opt27b", "opt67b", "open_flamingo_mpt", "open_flamingo_redpajama", "open_flamingo_redpajama_instruct"]:
+        partitions = [". ", "Q: ", "Question: ", "Long Answer: "]
+        if args.model_name in [
+            "kosmos2",
+            "opt27b",
+            "opt67b",
+            "open_flamingo_mpt",
+            "open_flamingo_redpajama",
+            "open_flamingo_redpajama_instruct",
+        ]:
             questions = [re.sub("^<grounding> ", "", q) for q in questions]
             output = [re.split(r"[\n.]", o)[0] for o in output]
             output = [reduce(lambda txt, p: txt.partition(p)[0], partitions, text) for text in output]
@@ -278,9 +334,12 @@ def postprocess_cleanup_answer(args, predictions, logger):
         for i, data in enumerate(batch):
             data["raw_prediction"] = output[i]
 
+        if "rationale" in args.prompt_name and "iterative" not in args.prompt_name:
+            output = [extract_answer_from_cot(prediction) for prediction in output]
+
         if args.dataset_name in ["aokvqa", "visual7w"] and args.task_type == "multiple_choice":
             for i, data in enumerate(batch):
-                data["prediction"] = data["raw_prediction"]
+                data["prediction"] = output[i]
         else:
             cleaned_results = postprocess_vqa_answers(
                 args.dataset_name, output, questions

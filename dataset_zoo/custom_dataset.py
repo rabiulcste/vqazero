@@ -31,7 +31,7 @@ class VQADataset(Dataset):
         self.config = config
         self.split = split
         self.dataset_name = dataset_name
-        self.dataset = get_vqa_dataset(dataset_name, split, config.task_type == "multiple_choice")
+        self.dataset = get_vqa_dataset(dataset_name, split, config.task_type == "multiple_choice", config.chunk_id)
         self.prompt_handler = prompt_handler
         self.model_name = kwargs.get("model_name")
         self.additional_context_data = {}
@@ -86,7 +86,7 @@ class VQADataset(Dataset):
                 f"--model_name {self.config.model_name} --vqa_format caption_qa "
                 f"--prompt_name {self.config.prompt_name}"
             )
-        with open(fname, "r") as f:
+        with open(fname, "r", encoding="utf-8") as f:
             prompted_captions = json.load(f)
         logger.info(f"Loaded prompted captions from {fname}")
         cached_data = prompted_captions
@@ -134,7 +134,7 @@ class VQADataset(Dataset):
 
             if self.additional_context_data:
                 additional_context_str = self.additional_context_data[str(content["question_id"])]
-                if additional_context_str[-1] != ".":
+                if additional_context_str and additional_context_str[-1] != ".":
                     additional_context_str += "."
                 context_data_key = "rationale" if self.config.vqa_format == "cot_vqa" else "caption"
                 inp.update({context_data_key: additional_context_str})
@@ -146,6 +146,7 @@ class VQADataset(Dataset):
                 support_data = self.demo_samples_provider.get_support_examples_by_question_id(content["question_id"])
                 data["support_examples"] = support_data["support_examples"]
                 prompted_question = support_data["formatted_support_text"] + prompted_question
+
             if "opt" in self.config.model_name:
                 prompted_question = prompted_question.replace("\n", " ")
 
@@ -181,6 +182,8 @@ class VQADataset(Dataset):
             prompt_txt = self.prompt_handler.prompt.apply({"question": question})[0]
         elif self.prompt_handler.prompt_name.startswith("prefix_"):
             prompt_txt = self.prompt_handler.prompt.apply({})[0]
+            if self.config.gen_model_name == "kosmos2":
+                prompt_txt = f"<grounding> {prompt_txt}"
             logger.debug(f"PROMPT FOR CAPTION GENERATION: {prompt_txt}")
         else:
             prompt_txt = ""
@@ -207,7 +210,7 @@ class DemoSamplesProvider:
         )
         self.nearest_neighbor_ids = self.load_nearest_neighbor_ids_from_cache(config.dataset_name)
 
-    def load_nearest_neighbor_ids_from_cache(self, dataset_name):
+    def load_nearest_neighbor_ids_from_cache(self, dataset_name: str):
         fpath = os.path.join(
             OUTPUT_DIR,
             "cache",
@@ -296,7 +299,7 @@ class DemoSamplesProvider:
         return ""
 
     @staticmethod
-    def load_generated_captions(config, split, prompt_name="prefix_promptcap"):
+    def load_generated_captions(config, split: str, prompt_name: str = "prefix_promptcap"):
         logger.info(f"Loading generated captions for {config.dataset_name}, {config.model_name}, {split}")
 
         fpath = os.path.join(
@@ -315,7 +318,7 @@ class DemoSamplesProvider:
         return caption_data
 
     @staticmethod
-    def load_generated_rationales(config, split, prompt_name):
+    def load_generated_rationales(config, split: str, prompt_name: str):
         logger.info(f"Loading generated rationales for {config.dataset_name}, {config.model_name}, {split}")
         fpath = os.path.join(
             OUTPUT_DIR,
@@ -334,7 +337,7 @@ class DemoSamplesProvider:
 
 
 def get_flamingo_format(text: str, answer=None) -> str:
-    return f"<image>{text} {'' if answer is None else ''}"
+    return f"<image>{text} {'' if answer is None else ''} {'<|endofchunk|>' if answer is not None else ''}"
 
 
 def prepare_flamingo_data(example):
@@ -364,8 +367,7 @@ def collate_fn_builder(processor=None, tokenizer=None):
         processed_batch = {bkey: [example[bkey] for example in batch] for bkey in bkeys if bkey in batch[0]}
 
         if processor is not None:
-            from dataset_zoo.custom_processor import (FlamingoProcessor,
-                                                      LlaVaProcessor)
+            from dataset_zoo.custom_processor import FlamingoProcessor, LlaVaProcessor
 
             if isinstance(processor, FlamingoProcessor):
                 batch_images, batch_text = zip(*[prepare_flamingo_data(example) for example in batch])

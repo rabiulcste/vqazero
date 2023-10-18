@@ -1,11 +1,11 @@
 dataset: okvqa
-subset: basic
+subset: vqa
 
 templates:
   cb8a90c9-a40d-4405-a853-1df408f97ab5: !Template
     id: cb8a90c9-a40d-4405-a853-1df408f97ab5
     jinja: |
-      {{% if caption -%} {{ caption }} {% endif -%} Please answer the following question. {{ question }}
+      {% if caption -%} {{ caption }} {% endif -%} Please answer the following question. {{ question }}
     metadata: !TemplateMetadata
       choices_in_prompt: false
     name: prefix_answer_the_following_question

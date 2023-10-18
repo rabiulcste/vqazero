@@ -65,9 +65,7 @@ class FlamingoProcessor:
         return input_ids, attention_mask.bool()
 
 
-from LLaVA.llava.constants import (DEFAULT_IM_END_TOKEN,
-                                   DEFAULT_IM_START_TOKEN, DEFAULT_IMAGE_TOKEN,
-                                   IMAGE_TOKEN_INDEX)
+from LLaVA.llava.constants import DEFAULT_IM_END_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IMAGE_TOKEN, IMAGE_TOKEN_INDEX
 from LLaVA.llava.conversation import conv_templates
 from LLaVA.llava.mm_utils import tokenizer_image_token
 
@@ -149,7 +147,7 @@ class LlaVaProcessor:
         """Pad a sequence to the desired max length."""
         if len(sequence) >= max_length:
             return sequence
-        return torch.cat([sequence, torch.full((max_length - len(sequence),), padding_value, dtype=sequence.dtype)])
+        return torch.cat([torch.full((max_length - len(sequence),), padding_value, dtype=sequence.dtype), sequence])
 
     def get_processed_tokens(self, text: str, image_path: str):
         prompt = self.format_text(text)

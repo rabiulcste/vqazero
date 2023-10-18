@@ -63,7 +63,7 @@ if model_class is None or model_info is None:
 
 # Generate the inference_function_map dictionary based on the MODEL_CLS_INFO dictionary
 inference_fn_suffix_map = {
-    "winoground": "winoground",
+    "winoground": "winoground_vqa",
     "okvqa": "vqa",
     "vqa_v2": "vqa",
     "visual7w": "vqa",

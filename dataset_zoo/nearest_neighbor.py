@@ -61,7 +61,7 @@ class NearestNeighborQuestionFinder:
         return nearest_neighbors
 
 
-def cache_nearest_neighbor_data(dataset_name, multiple_choice=False):
+def cache_nearest_neighbor_data(dataset_name: str, multiple_choice=False):
     fpath = os.path.join(
         OUTPUT_DIR,
         "cache",

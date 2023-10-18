@@ -30,6 +30,12 @@ DATASET_CONFIG = {
             "image_root": "train2014/",
             "image_prefix": "COCO_train2014_",
         },
+        "train_30k": {
+            "question_file": "v2_OpenEnded_mscoco_train2014_questions_30k.json",
+            "annotation_file": "v2_mscoco_train2014_annotations.json",
+            "image_root": "train2014/",
+            "image_prefix": "COCO_train2014_",
+        },
     },
     "visual7w": {
         "image_root": "images/",
@@ -43,8 +49,8 @@ DATASET_CONFIG = {
             "image_prefix": "gqa",
         },
         "train_bal": {
-            # "annotation_file": "train_balanced_questions.json",
-            "annotation_file": "train_balanced_questions_small.json",
+            "annotation_file": "train_balanced_questions.json",
+            # "annotation_file": "train_balanced_questions_small.json",
             "image_root": "/network/projects/aishwarya_lab/datasets/gqa/images/",
             "image_prefix": "gqa",
         },
@@ -81,6 +87,9 @@ MODEL_CLS_INFO = {
         "flant5xxl": {"name": "google/flan-t5-xxl"},
         "opt27b": {"name": "facebook/opt-2.7b"},
         "opt67b": {"name": "facebook/opt-6.7b"},
+        "vicuna13b": {"name": "lmsys/vicuna-13b-v1.5"},
+        "redpajama": {"name": "togethercomputer/RedPajama-INCITE-Base-3B-v1"},
+        "redpajama_instruct": {"name": "togethercomputer/RedPajama-INCITE-Instruct-3B-v1"},
         "kosmos2": {"name": "ydshieh/kosmos-2-patch14-224"},
         "open_flamingo_redpajama": {
             "vision_encoder_path": "ViT-L-14",

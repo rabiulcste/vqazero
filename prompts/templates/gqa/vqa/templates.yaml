@@ -1,6 +1,6 @@
 
 dataset: gqa
-subset: basic
+subset: vqa
 
 templates:
   67b0a9a9-3bfa-45e8-b0e3-3f3dc66da966: !Template

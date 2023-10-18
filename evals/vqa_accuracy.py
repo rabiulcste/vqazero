@@ -57,8 +57,7 @@ def eval_vqa(args, output_dir: str, vicuna_ans_parser=False):
         "fuzzy_accuracy": vqaEval.accuracy["fuzzyOverall"],
         "per_question_type_accuracy": vqaEval.accuracy["perQuestionType"],
         "per_answer_type_accuracy": vqaEval.accuracy["perAnswerType"],
-        "eval_time": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
+        "eval_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
 
     fn_suffx = "result_meta_vicuna.json" if vicuna_ans_parser else "result_meta.json"
@@ -76,11 +75,12 @@ def eval_gqa(args, output_dir: str, vicuna_ans_parser: bool = False, results: di
 
     total_correct = 0
     total_fuzz_correct = 0
+    wrong_predictions = []
     for question_id, result in results.items():
         if result["answer"] == result["prediction"]:
             total_correct += 1
-        # else:
-        #     print(f"prediction = {result['prediction']}, answer = {result['answer']}")
+        else:
+            wrong_predictions.append(result)
 
         fuzz_score = fuzz.token_set_ratio(result["prediction"], result["answer"], force_ascii=False)
         if fuzz_score > 80:
@@ -98,7 +98,7 @@ def eval_gqa(args, output_dir: str, vicuna_ans_parser: bool = False, results: di
         "num_examples": len(results),
         "vqa_accuracy": overall_acc,
         "fuzzy_accuracy": overall_fuzz_acc,
-        "eval_time": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        "eval_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
     fn_suffx = "result_meta_vicuna.json" if vicuna_ans_parser else "result_meta.json"
     json_file = os.path.join(output_dir, fn_suffx)
@@ -106,13 +106,18 @@ def eval_gqa(args, output_dir: str, vicuna_ans_parser: bool = False, results: di
         json.dump(data, f, indent=4)
     logger.info(f"Saved result meta to {json_file}")
 
+    wrong_predictions_file = os.path.join(output_dir, "wrong_predictions.json")
+    with open(wrong_predictions_file, "w") as f:
+        json.dump(wrong_predictions, f, indent=4)
+    logger.info(f"Saved incorrect predictions to {wrong_predictions_file}")
+
 
 # https://github.com/allenai/aokvqa/blob/main/evaluation/eval_predictions.py
 def eval_visual7w(args, output_dir: str, predictions, multiple_choice=False, strict=False, vicuna_ans_parser=False):
-    preds = {qid: predictions[qid]["raw_prediction"] for qid in predictions}
+    preds = {str(qid): predictions[qid]["prediction"] for qid in predictions}
     dataset = load_visual7w_dataset_from_json(args.dataset_name, "val")
     if isinstance(dataset, list):
-        dataset = {dataset[i]["question_id"]: dataset[i] for i in range(len(dataset))}
+        dataset = {str(dataset[i]["question_id"]): dataset[i] for i in range(len(dataset))}
     if strict:
         dataset_qids = set(dataset.keys())
         preds_qids = set(preds.keys())
@@ -132,7 +137,8 @@ def eval_visual7w(args, output_dir: str, predictions, multiple_choice=False, str
             cur_acc = float(normalize_string(pred) == normalize_string(dataset[q]["answer"]))
             acc.append(cur_acc)
             if cur_acc == 0:
-                wrong_predictions.append(predictions[q])
+                curr_info_dict = predictions.get(q, predictions.get(str(q)))
+                wrong_predictions.append(curr_info_dict)
 
         ## Direct Answer setting
         else:
@@ -150,7 +156,7 @@ def eval_visual7w(args, output_dir: str, predictions, multiple_choice=False, str
         "vqa_format": args.vqa_format,
         "num_examples": len(dataset),
         "vqa_accuracy": acc,
-        "eval_time": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        "eval_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
 
     logger.info(f"VQA Accuracy: {acc}")
@@ -165,6 +171,7 @@ def eval_visual7w(args, output_dir: str, predictions, multiple_choice=False, str
         json.dump(wrong_predictions, f, indent=4)
     logger.info(f"Saved incorrect predictions to {wrong_predictions_file}")
 
+
 def _load_aokvqa(aokvqa_dir, split, version="v1p0"):
     assert split in ["train", "val", "test", "test_w_ans"]
     dataset = json.load(open(os.path.join(aokvqa_dir, f"aokvqa_{version}_{split}.json")))
@@ -173,7 +180,7 @@ def _load_aokvqa(aokvqa_dir, split, version="v1p0"):
 
 def eval_aokvqa(args, output_dir: str, predictions, multiple_choice=False, strict=False, vicuna_ans_parser=False):
     preds = {qid: predictions[qid]["prediction"] for qid in predictions}  # flamingo_processed_prediction
-    dataset = _load_aokvqa(os.path.join(VQA_DATASET_DIR, "datasets", "aokvqa"), "val")
+    dataset = _load_aokvqa(os.path.join(VQA_DATASET_DIR, "datasets", "aokvqa"), args.split)
     if isinstance(dataset, list):
         dataset = {dataset[i]["question_id"]: dataset[i] for i in range(len(dataset))}
 
@@ -207,7 +214,8 @@ def eval_aokvqa(args, output_dir: str, predictions, multiple_choice=False, stric
             cur_acc = float(normalize_string(pred) == normalize_string(choices[correct_choice_idx]))
             acc.append(cur_acc)
             if cur_acc == 0:
-                wrong_predictions.append(predictions[q])
+                curr_info_dict = predictions.get(q, predictions.get(str(q)))
+                wrong_predictions.append(curr_info_dict)
 
         ## Direct Answer setting
         else:
@@ -242,7 +250,7 @@ def eval_aokvqa(args, output_dir: str, predictions, multiple_choice=False, stric
         "vqa_format": args.vqa_format,
         "num_examples": len(dataset),
         "vqa_accuracy": acc,
-        "eval_time": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        "eval_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
 
     logger.info(f"VQA Accuracy: {acc}")
@@ -279,19 +287,9 @@ def eval_winoground(args, output_dir: str, predictions, template_expr=""):
     uncommon_correct_count = 0
     for data in predictions:
         result = data["scores"]
-        _result = {}
-        for key, sentence in result.items():
-            if key not in ["c0_i0", "c0_i1", "c1_i0", "c1_i1"]:
-                continue
-            match = re.search(r"^\w+", str(sentence))  # find the first word that matches the pattern
-            if match:
-                _result[key] = match.group().lower()
-            else:
-                _result[key] = sentence
-
-        group_correct_count += 1 if group_correct(_result) else 0
-        common_correct_count += 1 if common_correct(_result) else 0
-        uncommon_correct_count += 1 if uncommon_correct(_result) else 0
+        group_correct_count += 1 if group_correct(result) else 0
+        common_correct_count += 1 if common_correct(result) else 0
+        uncommon_correct_count += 1 if uncommon_correct(result) else 0
 
     denominator = len(predictions)
     logger.info(f"group score: {group_correct_count * 100 / denominator}")
@@ -310,7 +308,7 @@ def eval_winoground(args, output_dir: str, predictions, template_expr=""):
         "group_score": group_correct_count * 100 / denominator,
         "common_score": common_correct_count * 100 / denominator,
         "uncommon_score": uncommon_correct_count * 100 / denominator,
-        "eval_time": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        "eval_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
     json_path = os.path.join(output_dir, "result_meta.json")
     save_to_json(json_path, data)

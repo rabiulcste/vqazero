@@ -1,5 +1,5 @@
 dataset: visual7w
-subset: basic
+subset: vqa
 
 templates:
   a5a5c47d-26b6-41da-99b5-23b5a6306930: !Template
