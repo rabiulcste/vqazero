@@ -75,6 +75,20 @@ templates:
       choices_in_prompt: false
     name: prefix_your_task_vqa_short_answer
 
+
+  3b0b0b1d-2b1f-4b0f-8b1f-1b1f4b0f8b1f: !Template
+    id: 3b0b0b1d-2b1f-4b0f-8b1f-1b1f4b0f8b1f
+    jinja: |
+      {% if fewshot == True -%}
+      {% if caption -%} {{ caption }} {% endif -%} Question: {{ question }} {% if choice -%} {{ choice }} {% endif -%} Answer: {{ answer }}
+      {% else -%}
+      {% if caption -%} {{ caption }} {% endif -%} Your task is to answer a question based on the visual information present in the image. Question: {{ question }} {% if choice -%} {{ choice }} {% endif -%} Answer:
+      {% endif %}   
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_your_task_vqa_answer
+
+
   5b5baf0-07ff-4760-926d-79efb7388780: !Template
     id: 5b5baf0-07ff-4760-926d-79efb7388780
     jinja: |
@@ -92,9 +106,9 @@ templates:
     id: 6379cbd5-f3c5-484f-833a-75e33b863b0b
     jinja: |
       {% if caption -%} {{ caption }} {% endif -%}
-      Q: {{ question }}
+      Question: {{ question }}
       {% if choice -%} Choices: {{ choice }} {% endif -%}
-      A: Let's think step by step.
+      Answer: Let's think step by step.
     metadata: !TemplateMetadata
       choices_in_prompt: false
     name: prefix_think_step_by_step_rationale

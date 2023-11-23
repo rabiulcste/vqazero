@@ -30,13 +30,16 @@ class VQAInference:
     def __init__(self, args):
         self.args = args
 
-    def _get_device(self):
+    @staticmethod
+    def get_device():
         return "cuda" if torch.cuda.is_available() else "cpu"
 
-    def _get_autocast_dtype(self):
+    @staticmethod
+    def get_autocast_dtype():
         """Return the best available dtype for autocasting: bfloat16 if available, else float16."""
-        if torch.cuda.is_bf16_supported():
-            return torch.bfloat16
+        if torch.cuda.is_available():
+            if torch.cuda.is_bf16_supported():
+                return torch.bfloat16
         return torch.float16
 
     def apply_prompt_to_example(self, handler: PromptingHandler, example):
@@ -46,7 +49,7 @@ class VQAInference:
             else handler.generic_prompting_handler_for_winoground(example)
         )
 
-    def get_cached_context_file_path(self, split) -> str:
+    def get_cached_context_file_path(self, split_name: str) -> str:
         required_args = [
             self.args.dataset_name,
             self.args.gen_model_name,
@@ -70,24 +73,24 @@ class VQAInference:
             self.args.gen_model_name,
             self.args.vqa_format,
             subdir_prefix,
-            split,
+            split_name,
         )
         os.makedirs(dir_path, exist_ok=True)
-        file_path = os.path.join(dir_path, f"output.json")
-        return file_path
+        output_file_path = os.path.join(dir_path, f"output.json")
+        return output_file_path
 
-    def load_cached_context_data(self, split: str):
-        fname = self.get_cached_context_file_path(split)
-        if not os.path.exists(fname):
+    def load_cached_context_data(self, split_name: str):
+        context_data_file_path = self.get_cached_context_file_path(split_name)
+        if not os.path.exists(context_data_file_path):
             raise FileNotFoundError(
-                f"File {fname} does not exist. Please generate the prompted captions first.\n"
+                f"File {context_data_file_path} does not exist. Please generate the prompted captions first.\n"
                 f"python caption_generation.py --dataset_name {self.config.dataset_name} "
                 f"--model_name {self.config.model_name} --vqa_format caption_qa "
                 f"--prompt_name {self.config.prompt_name}"
             )
-        with open(fname, "r") as f:
+        with open(context_data_file_path, "r") as f:
             prompted_captions = json.load(f)
-        logger.info(f"Loaded prompted captions from {fname}")
+        logger.info(f"Loaded prompted captions from {context_data_file_path}")
         cached_data = prompted_captions
 
         return cached_data
@@ -98,9 +101,12 @@ class VQAInference:
 
         return self.additional_context_data[str(eid)]
 
+    def get_formatted_captions(self, captions: List[str]):
+        return [f"Visual Context: {caption}" for caption in captions]
+
     def _perform_vqa_inference(self):
-        device = self._get_device()
-        autocast_dtype = self._get_autocast_dtype()
+        device = self.get_device()
+        autocast_dtype = self.get_autocast_dtype()
         self.args.autocast_dtype = autocast_dtype
 
         logger.info(f'Selected prompt name :"{self.args.prompt_name}"')
@@ -118,7 +124,7 @@ class VQAInference:
             images = [example[f"image_{i}"].convert("RGB") for i in range(NUM_IMAGES)]
             questions = self.apply_prompt_to_example(prompt_handler, example)
             model_generated_captions = self._get_captions_by_eid(eid)
-
+            model_generated_captions = self.get_formatted_captions(model_generated_captions)
             if model_generated_captions:
                 prompt = []
                 for q in questions:
@@ -174,45 +180,32 @@ class VQAInference:
                 generated_outputs = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
 
             elif self.args.model_name == "llava":
-                from LLaVA.llava.conversation import (SeparatorStyle,
-                                                      conv_templates)
-                from LLaVA.llava.mm_utils import KeywordsStoppingCriteria
+                aggregate_output = []
+                for txt, img in zip(prompt, image):
+                    image_tensor, input_ids = processor.get_processed_tokens(txt, img)
+                    input_ids = input_ids.to("cuda", non_blocking=True)
 
-                conv = conv_templates[processor.conv_mode].copy()
-                stop_str = conv.sep if conv.sep_style != SeparatorStyle.TWO else conv.sep2
-                keywords = [stop_str]
-                stopping_criteria = (
-                    [KeywordsStoppingCriteria(keywords, processor.tokenizer, input_ids)]
-                    if conv.version == "v0"
-                    else None
-                )
-                input_ids = inputs["input_ids"]
-                image_tensor = inputs["image_tensors"]
-                input_ids = input_ids.cuda()
+                    with torch.inference_mode():
+                        generated_ids = model.generate(
+                            input_ids,
+                            images=image_tensor.to(dtype=torch.float16, device="cuda", non_blocking=True),
+                            num_beams=self.args.num_beams,
+                            max_new_tokens=self.args.max_length,
+                            length_penalty=self.args.length_penalty,
+                            use_cache=True,
+                        )
+                    generated_ids = generated_ids[:, input_ids.shape[1] :]
+                    generated_outputs = processor.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
 
-                output_ids = model.generate(
-                    input_ids,
-                    images=image_tensor.half().cuda(),
-                    do_sample=False,
-                    num_beams=self.args.num_beams,
-                    max_new_tokens=self.args.max_length,
-                    length_penalty=self.args.length_penalty,
-                    use_cache=True,
-                    stopping_criteria=stopping_criteria,
-                )
-                generated_outputs = processor.tokenizer.batch_decode(
-                    output_ids[:, input_ids.shape[1] :], skip_special_tokens=True
-                )
-                generated_outputs = [out.strip() for out in generated_outputs]
-                generated_outputs = [
-                    out[: -len(stop_str)] if out.endswith(stop_str) else out for out in generated_outputs
-                ]
+                    aggregate_output.append(generated_outputs[0])
+                generated_outputs = aggregate_output
 
             else:
                 inputs = processor(images=image, text=prompt, padding=True, return_tensors="pt").to(model.device)
                 generated_ids = model.generate(**inputs)
                 generated_outputs = processor.batch_decode(generated_ids, skip_special_tokens=True)
 
+            generated_outputs = [out.strip() for out in generated_outputs]
             generated_outputs = self.yes_no_parser(generated_outputs)
             logger.debug(f"Output: {generated_outputs}")
             scores = {
@@ -290,10 +283,9 @@ def main(args):
     args.length_penalty = 1.0
 
     inf = VQAInference(args)
-
     predictions = inf._perform_vqa_inference()
 
     # Save the results as a JSON file
-    predictions_path = os.path.join(output_dir, "predictions.json")
-    save_to_json(predictions_path, predictions)
+    prediction_file_path = os.path.join(output_dir, "predictions.json")
+    save_to_json(prediction_file_path, predictions)
     eval_winoground(args, output_dir, predictions)

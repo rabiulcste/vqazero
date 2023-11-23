@@ -133,9 +133,9 @@ templates:
     id: aac913af-4369-488a-8ea4-a905068cb755
     jinja: |
       {% if fewshot == True -%}
-      {% if caption -%} {{ caption }} {% endif -%} Question: {{ question }} {% if choice -%} Choices: {{ choice }} {% endif -%} Answer: {{ answer }}
+      {% if caption -%} {{ caption }} {% endif -%} Question: {{ question }} {% if choice -%} Select the correct one from choices: {{ choice }} Correct {% endif -%} Answer: {{ answer }}
       {% else -%}
-      {% if caption -%} {{ caption }} {% endif -%} Your task is to answer a knowledge based question. Question: {{ question }} {% if choice -%} Choices: {{ choice }} {% endif -%} Answer:
+      {% if caption -%} {{ caption }} {% endif -%} Your task is to answer a knowledge based question. Question: {{ question }} {% if choice -%} Select the correct one from choices: {{ choice }} Correct {% endif -%} Answer:
       {% endif %}
     metadata: !TemplateMetadata
       choices_in_prompt: false
@@ -183,14 +183,35 @@ templates:
   6379cbd5-f3c5-484f-833a-75e33b863b0b: !Template
     id: 6379cbd5-f3c5-484f-833a-75e33b863b0b
     jinja: |
-      {% if caption -%} {{ caption }} {% endif -%}
-      Q: {{ question }}
-      {% if choice -%} Choices: {{ choice }} {% endif -%}
-      A: Let's think step by step.
+      {% if fewshot == True -%}
+      Question: {{ question }} {% if choice -%} Choices: {{ choice }} {% endif -%} {% if rationale -%} Answer: Let's think step by step. {{ rationale }} {% endif -%}
+      {% else -%}
+      Question: {{ question }} {% if choice -%} Choices: {{ choice }} {% endif -%} {% if rationale -%} {{ rationale }} {% endif -%} Answer: Let's think step by step.
+      {% endif %}
     metadata: !TemplateMetadata
       choices_in_prompt: false
     name: prefix_think_step_by_step_rationale
     author: Rabiul Awal
+
+
+  6379cbd5-d3c5-484f-833a-75e33b863b0b: !Template
+    id: 6379cbd5-d3c5-484f-833a-75e33b863b0b
+    jinja: |
+      Question: {{ question }} {% if choice -%} Choices: {{ choice }} {% endif -%} {% if rationale -%} Let's think step by step. {{ rationale }} {% endif -%} The final answer is
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_think_step_by_step_rationale_iterative
+    author: Rabiul Awal
+
+  6379cbd5-d3c5-584f-833a-75e33b863b0b: !Template
+    id: 6379cbd5-d3c5-584f-833a-75e33b863b0b
+    jinja: |
+      {% if rationale -%} {{ rationale }} {% endif -%} Question: {{ question }} {% if choice -%} Choices: {{ choice }} {% endif -%} Short answer:
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_think_step_by_step_rationale_mixer
+    author: Rabiul Awal
+
 
   eaf6798a-d3e3-48f1-a711-72eb8dc2c0ab: !Template    
     id: eaf6798a-d3e3-48f1-a711-72eb8dc2c0ab

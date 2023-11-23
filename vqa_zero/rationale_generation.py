@@ -1,21 +1,20 @@
+import copy
 import json
 import os
-import re
-import time
 from typing import List, Union
 
 import torch
 from thefuzz import fuzz
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from transformers import AutoProcessor, Blip2ForConditionalGeneration
 
-from dataset_zoo.custom_dataset import VQADataset, collate_fn
+from dataset_zoo.custom_dataset import VQADataset, collate_fn_builder
 from evals.answer_postprocess import extract_answer_from_cot
 from utils.config import OUTPUT_DIR
 from utils.globals import MODEL_CLS_INFO
 from utils.handler import PromptingHandler
 from utils.logger import Logger
+from vqa_zero.inference_utils import load_model_and_processors
 
 logger = Logger(__name__)
 
@@ -32,67 +31,64 @@ class ChainOfThoughtGenerator:
         self.args = args
         self.data = None  # rationale data
         self.device = device
+        self.gpu_count = torch.cuda.device_count()
 
-    def generate_chain_of_thought_rationale(self, prompt_handler: PromptingHandler, split):
-        if os.path.exists(self.get_file_path(split)):
-            file_mod_time = os.path.getmtime(self.get_file_path(split))
-            current_time = time.time()
-            two_days_in_seconds = N * 24 * 60 * 60
-            if current_time - file_mod_time < two_days_in_seconds:
-                logger.info(f"Rationale data already exists. You can load it from cache {self.get_file_path()}")
-                return
+    def _initialize_dataloader(self, split_name: str, prompt_handler: PromptingHandler, collate_fn):
+        config = copy.copy(self.args)
+        if "train" in split_name:  # hack to avoid chunking for train split for few-shot inference (cvpr submission)
+            config.chunk_id = None
 
-        model_name = MODEL_CLS_INFO["hfformer"][self.args.gen_model_name]["name"]
-        self.processor = AutoProcessor.from_pretrained(model_name)
-        self.model = Blip2ForConditionalGeneration.from_pretrained(
-            model_name, torch_dtype=torch.bfloat16, device_map="auto"
-        )
-
-        batch_size = 32
+        batch_size = 3 if self.args.gen_model_name == "llava" else 20 * self.gpu_count  # hardcoded for now
         dataset_args = {
-            "config": self.args,
+            "config": config,
             "dataset_name": self.args.dataset_name,
             "prompt_handler": prompt_handler,
-            "model_name": self.args.gen_model_name,
-            "split": split,
+            "split_name": split_name,
+            "cache_init": False,
         }
         dataset = VQADataset(**dataset_args)
-        dataloader = DataLoader(
+
+        return DataLoader(
             dataset,
             batch_size=batch_size,
             shuffle=False,
             num_workers=self.args.num_workers,
             collate_fn=collate_fn,
-            pin_memory=True,  # set to True to enable faster data transfer between CPU and GPU
+            pin_memory=True,
         )
+
+    def generate_chain_of_thought_rationale(self, prompt_handler: PromptingHandler, split_name: str):
+        rationale_file_path = self.get_output_file_name(split_name)
+        if os.path.exists(rationale_file_path):
+            logger.info(f"Rationale data already exists. You can load it from cache {rationale_file_path}")
+            return
+
+        self.model, self.processor, self.tokenizer = load_model_and_processors(
+            self.args.gen_model_name, self.args.device, self.args.autocast_dtype
+        )
+        collate_fn = collate_fn_builder(self.processor, self.tokenizer)
+        dataloader = self._initialize_dataloader(split_name, prompt_handler, collate_fn)
 
         logger.info(
-            f" Generating rationale data for {self.args.dataset_name} dataset, {split} split."
+            f" Generating rationale data for {self.args.dataset_name} dataset, {split_name} split."
             f" It may take a few minutes depending on your dataset size. Please wait..."
         )
-        logger.info(f" Num examples: \t{len(dataset)}")
-        logger.info(f" Batch size: \t{batch_size}")
-        logger.info(f" Num iterations: \t{len(dataset) // batch_size}")
+        logger.info(f" Num examples: \t{len(dataloader.dataset)}")
+        logger.info(f" Batch size: \t{dataloader.batch_size}")
+        logger.info(f" Num iterations: \t{len(dataloader.dataset) // dataloader.batch_size}")
 
         success = 0
-        output = {}
-        for batch in tqdm((dataloader), desc="Generating rationales"):
-            images = batch["image"]
-            questions = batch["question"]
-            prompt = batch["prompted_question"]
-            inputs = self.processor(images=images, text=prompt, padding=True, return_tensors="pt").to(
-                self.device, torch.bfloat16
-            )
+        results, cached_ids = self.load_data_from_cache(split_name)
 
-            generated_ids = self.model.generate(
-                **inputs,
-                max_new_tokens=100,
-                num_beams=5,
-                length_penalty=1.4,
-                no_repeat_ngram_size=3,
-            )
-            generated_rationales = self.processor.batch_decode(generated_ids, skip_special_tokens=True)
-            assert len(generated_rationales) == len(questions)
+        for batch in tqdm((dataloader), desc="Generating rationales"):
+            questions = batch["question"]
+            question_ids = batch["question_id"]
+
+            if all([qid in cached_ids for qid in question_ids]):
+                continue
+
+            generated_rationales = self._generate(batch)
+            assert len(generated_rationales) == len(questions), f"{len(generated_rationales)} != {len(questions)}"
 
             for idx, (question_id, question, rationale) in enumerate(
                 zip(batch["question_id"], questions, generated_rationales)
@@ -101,28 +97,49 @@ class ChainOfThoughtGenerator:
                 answer = batch["answer"][idx]
 
                 fuzz_score = fuzz.ratio(answer, prediction)
-                if self.args.vqa_format == "cot_qa" and fuzz_score > 80:
-                    output[question_id] = rationale
-                    logger.info(
-                        f"Question = {question}, Rationale: {rationale}, Prediction = {prediction}, Answer = {answer}"
-                    )
+                if self.args.vqa_format == "cot_vqa" and fuzz_score > 80 and split_name == "train":
+                    results[question_id] = rationale
                     success += 1
                 else:
-                    output[question_id] = rationale
+                    results[question_id] = rationale
                     success += 1
-
-        logger.info(f"Generated rationales for {success} questions out of {len(dataset)} questions.")
-
-        self.save(output, split)
-
-    def generate_blip(self, samples):
-        with torch.no_grad(), torch.cuda.amp.autocast():
-            if self.args.model_name == "blip_vqa":
-                return self.model.generate(samples=samples)
-            else:
-                return self.model.generate(
-                    samples=samples, max_length=100, length_penalty=1.4, num_beams=5, no_repeat_ngram_size=3
+                logger.info(
+                    f"Question = {question}, Rationale: {rationale}, Prediction = {prediction}, Answer = {answer}"
                 )
+            logger.info(f"Generated rationales for {success} questions out of {len(dataloader.dataset)} questions.")
+
+            if len(results) % 10 == 0:
+                cache_fname = self.get_cache_file_path(split_name)
+                self.save_to_json(results, cache_fname)
+
+        self.save_to_json(results, rationale_file_path)
+
+    def _generate(self, batch):
+        print(self.args.gen_model_name)
+        if self.args.gen_model_name.startswith("blip"):
+            inputs = {
+                "input_ids": batch["input_ids"].to(self.model.device),
+                "attention_mask": batch["attention_mask"].to(self.model.device),
+                "pixel_values": batch["pixel_values"].to(self.model.device, self.args.autocast_dtype),
+            }
+            generated_rationales = self.generate_blip2(inputs)
+
+        elif self.args.gen_model_name == "llava":
+            generated_rationales = self.generate_llava(batch)
+
+        return generated_rationales
+
+    def generate_blip(self, inputs):
+        generated_ids = self.model.generate(
+            **inputs,
+            max_new_tokens=128,
+            num_beams=3,
+            length_penalty=1,
+            no_repeat_ngram_size=3,
+        )
+        generated_rationales = self.processor.batch_decode(generated_ids, skip_special_tokens=True)
+
+        return generated_rationales
 
     def generate_hfformer(self, samples, max_new_tokens, num_beams, length_penalty, no_repeat_ngram_size):
         with torch.no_grad(), torch.cuda.amp.autocast():
@@ -136,6 +153,34 @@ class ChainOfThoughtGenerator:
             output = self.processor.batch_decode(generated_ids, skip_special_tokens=True)
 
         return output
+
+    def generate_llava(self, batch, max_length=128, do_sample=True, num_return_sequences=1):
+        from LLaVA.llava.conversation import SeparatorStyle, conv_templates
+        from LLaVA.llava.mm_utils import KeywordsStoppingCriteria
+
+        conv = conv_templates[self.processor.conv_mode].copy()
+        stop_str = conv.sep if conv.sep_style != SeparatorStyle.TWO else conv.sep2
+        keywords = [stop_str]
+        stopping_criteria = (
+            [KeywordsStoppingCriteria(keywords, self.processor.tokenizer, input_ids)] if conv.version == "v0" else None
+        )
+        input_ids = batch["input_ids"]
+        image_tensor = batch["image_tensors"]
+        input_ids = input_ids.cuda()
+
+        output_ids = self.model.generate(
+            input_ids,
+            images=image_tensor.half().cuda(),
+            use_cache=True,
+            do_sample=do_sample,
+            max_new_tokens=max_length,
+            stopping_criteria=stopping_criteria,
+            num_return_sequences=num_return_sequences,
+        )
+        generated_outputs = self.processor.tokenizer.batch_decode(
+            output_ids[:, input_ids.shape[1] :], skip_special_tokens=True
+        )
+        return generated_outputs
 
     def generate_iterative(
         self,
@@ -159,7 +204,7 @@ class ChainOfThoughtGenerator:
         raise NotImplementedError(f"filter_generated_ratioanles not implemented for {self.args.model_name}")
 
     def load(self):
-        fname = self.get_file_path()
+        fname = self.get_output_file_name()
         if not os.path.exists(fname):
             raise FileNotFoundError(
                 f"File {fname} does not exist. Please generate the prompted rationales first.\n"
@@ -183,25 +228,6 @@ class ChainOfThoughtGenerator:
             )
         self.data = prompted_rationales
 
-    def remove_answer_from_rationale(self, rationale, stragety="iterative"):
-        rationale = rationale.replace("To answer the question, consider the following:", "")
-        rationale = rationale.replace("To answer the above question, the relevant sentence is:", "")
-        rationale = rationale.replace("To answer this question, we should know that", "")
-        extracted_answer = extract_answer_from_cot(rationale)
-        # logger.info(f"Rationale: {rationale} | Extracted answer: {extracted_answer}")
-        if extracted_answer:
-            if stragety == "iterative":
-                match = re.search(r"\. (?=[A-Z])", rationale)
-                if match:
-                    rationale = rationale[: match.end() - 1]
-            else:
-                # Find the index of the extracted answer and remove the sentence containing it
-                answer_start_index = rationale.rfind(extracted_answer)
-                last_period_index = rationale[:answer_start_index].rfind(".")
-                rationale = rationale[: last_period_index + 1].strip()
-        # logger.info(f"Rationale after removing answer: {rationale}")
-        return rationale
-
     def load_by_ids(self, ids: Union[str, List[str]]):
         if isinstance(ids, str):
             prompted_rationales_batch = self.data[str(ids)]  # handling winoground case
@@ -209,14 +235,23 @@ class ChainOfThoughtGenerator:
             prompted_rationales_batch = [self.data[str(idx)] for idx in ids]
         return prompted_rationales_batch
 
-    def save(self, output_rationales, split):
-        fname = self.get_file_path(split)
+    def load_data_from_cache(self, data_split: str):
+        cached_data = {}
+        cache_file_path = self.get_cache_file_path(data_split)
+        if os.path.exists(cache_file_path):
+            with open(cache_file_path, "r") as file:
+                cached_data = json.load(file)
+            logger.info(f"Loaded cached data from {cache_file_path}")
+        cached_ids = set(cached_data.keys())
+        return cached_data, cached_ids
+
+    def save_to_json(self, output_rationales, fname: str):
         with open(fname, "w") as f:
             json.dump(output_rationales, f, ensure_ascii=False, indent=4)
 
         logger.info(f"Saved generated rationales to {fname}")
 
-    def get_file_path(self, split) -> str:
+    def get_output_dir_path(self, split_name: str) -> str:
         required_args = [self.args.dataset_name, self.args.gen_model_name, self.args.vqa_format, self.args.prompt_name]
         if any(val is None for val in required_args):
             raise ValueError(
@@ -236,12 +271,20 @@ class ChainOfThoughtGenerator:
             self.args.gen_model_name,
             self.args.vqa_format,
             subdir_prefix,
-            split,
+            split_name,
         )
         os.makedirs(dir_path, exist_ok=True)
+        return dir_path
 
-        file_path = os.path.join(dir_path, f"output.json")
-        return file_path
+    def get_output_file_name(self, split_name: str) -> str:
+        dir_path = self.get_output_dir_path(split_name)
+        output_file_path = os.path.join(dir_path, f"output.json")
+        return output_file_path
+
+    def get_cache_file_path(self, split_name: str) -> str:
+        dir_path = self.get_output_dir_path(split_name)
+        cache_file_name = os.path.join(dir_path, f"cached_output.json")
+        return cache_file_name
 
     @staticmethod
     def get_prompt_str_for_prefix_rationale(prompt_handler: PromptingHandler, questions: List[str]) -> List[str]:

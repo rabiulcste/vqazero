@@ -1,7 +1,7 @@
 import json
 import os
 import random
-from typing import Dict, List
+from typing import Dict, List, Union
 
 import torch
 from sentence_transformers import SentenceTransformer
@@ -9,15 +9,8 @@ from tqdm import tqdm
 
 from dataset_zoo.common import get_vqa_dataset
 from utils.config import OUTPUT_DIR
+from utils.globals import THRESHOLD_MAP
 from utils.logger import Logger
-
-THRESHOLD_MAP = {
-    "gqa": 0.6,
-    "aokvqa": 0.6,
-    "okvqa": 0.6,
-    "visual7w": 0.6,
-    "vqa_v2": 0.6,
-}
 
 random.seed(42)
 
@@ -61,14 +54,15 @@ class NearestNeighborQuestionFinder:
         return nearest_neighbors
 
 
-def cache_nearest_neighbor_data(dataset_name: str, multiple_choice=False):
+def cache_nearest_neighbor_data(dataset_name: str, multiple_choice=False, threshold: Union[float, None] = None):
+    threshold = THRESHOLD_MAP[dataset_name] if threshold is None else threshold
     fpath = os.path.join(
         OUTPUT_DIR,
         "cache",
         "nearest_neighbors",
         dataset_name,
         "train_to_val",
-        "output.json",
+        f"output+t{threshold}.json",
     )
 
     if os.path.exists(fpath):
@@ -79,8 +73,8 @@ def cache_nearest_neighbor_data(dataset_name: str, multiple_choice=False):
     question_ids = []
     val_split = "testdev_bal" if dataset_name == "gqa" else "val"
     train_split = "train_bal" if dataset_name == "gqa" else "train"
-    query_dataset = get_vqa_dataset(dataset_name, split=val_split, multiple_choice=multiple_choice)
-    exemplar_dataset = get_vqa_dataset(dataset_name, split=train_split, multiple_choice=multiple_choice)
+    query_dataset = get_vqa_dataset(dataset_name, split_name=val_split, multiple_choice=multiple_choice)
+    exemplar_dataset = get_vqa_dataset(dataset_name, split_name=train_split, multiple_choice=multiple_choice)
     for idx in range(len(exemplar_dataset)):
         content = exemplar_dataset[idx]
 
@@ -94,7 +88,6 @@ def cache_nearest_neighbor_data(dataset_name: str, multiple_choice=False):
         "question_ids": question_ids,
         "questions": question_list,
     }
-    threshold = THRESHOLD_MAP[dataset_name]
     nn_search = NearestNeighborQuestionFinder(data=data_dict, threshold=threshold)
 
     query_support_dict = {}
