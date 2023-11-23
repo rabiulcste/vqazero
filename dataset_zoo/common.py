@@ -15,33 +15,37 @@ logger = Logger(__name__)
 random.seed(42)
 
 
-def get_vqa_dataset(dataset_name: str, split: str, multiple_choice: bool = False, chunk_id=None) -> List[Dict]:
+def get_vqa_dataset(dataset_name: str, split_name: str, multiple_choice: bool = False, chunk_id=None) -> List[Dict]:
     if dataset_name == "aokvqa":
-        dataset = load_aokvqa_dataset_from_json(dataset_name, split, multiple_choice=multiple_choice, chunk_id=chunk_id)
+        dataset = load_aokvqa_dataset_from_json(
+            dataset_name, split_name, multiple_choice=multiple_choice, chunk_id=chunk_id
+        )
     elif dataset_name == "visual7w":
-        dataset = load_visual7w_dataset_from_json(dataset_name, split, multiple_choice=multiple_choice)
+        dataset = load_visual7w_dataset_from_json(dataset_name, split_name, multiple_choice=multiple_choice)
     elif dataset_name in ["vqa_v2", "okvqa"]:
-        dataset = load_vqa_dataset_from_json(dataset_name, split, chunk_id=chunk_id)
+        dataset = load_vqa_dataset_from_json(dataset_name, split_name, chunk_id=chunk_id)
     elif dataset_name == "gqa":
-        dataset = load_gqa_dataset_from_json(dataset_name, split)
+        dataset = load_gqa_dataset_from_json(dataset_name, split_name)
     else:
         raise NotImplementedError(f"Dataset {dataset_name} is not implemented yet.")
 
     return dataset
 
 
-def get_coco_path_image_id(coco_dir: str, split: str, image_id):
-    return os.path.join(coco_dir, f"{split}2017", f"{image_id:012}.jpg")
+def get_coco_path_image_id(coco_dir: str, split_name: str, image_id):
+    return os.path.join(coco_dir, f"{split_name}2017", f"{image_id:012}.jpg")
 
 
-def get_chunked_question_ids(dataset_dir: str, split: str, chunk_id: Union[int, None] = None):
+def get_chunked_question_ids(dataset_dir: str, split_name: str, chunk_id: Union[int, None] = None):
     chunked_question_ids = []
     if chunk_id is not None:
-        chunked_question_ids_fpath = os.path.join(dataset_dir, f"chunked_question_ids_{split}.json")
+        chunked_question_ids_fpath = os.path.join(
+            dataset_dir, "extras", "chunked", f"chunked_question_ids_{split_name}.json"
+        )
         with open(chunked_question_ids_fpath) as f:
             chunked_data = json.load(f)
         chunked_question_ids = chunked_data[chunk_id]
-        logger.info(f"Loading chunk {chunk_id} of {len(chunked_data)} from {split} split")
+        logger.info(f"Loading chunk {chunk_id} of {len(chunked_data)} from {split_name} split_name")
 
     return chunked_question_ids
 
@@ -61,7 +65,7 @@ def get_most_common_item(lst):
 
 
 def load_aokvqa_dataset_from_json(
-    dataset_name: str, split: str, multiple_choice: bool, version="v1p0", chunk_id=None
+    dataset_name: str, split_name: str, multiple_choice: bool, version="v1p0", chunk_id=None
 ) -> List[Dict]:
     """
     Builds a dataset from a JSON file using the AOKVQA dataset format.
@@ -69,62 +73,61 @@ def load_aokvqa_dataset_from_json(
         A list of dictionaries, where each dictionary represents a QA object.
         Each QA object has the following keys: 'question_id', 'question', 'image_path', and 'direct_answers'.
     """
-    assert split in ["train", "val", "test", "test_w_ans"]
-    dataset_dir = os.path.join(VQA_DATASET_DIR, "datasets", dataset_name)
-    dataset = json.load(open(os.path.join(dataset_dir, f"aokvqa_{version}_{split}.json")))
+    assert split_name in ["train", "val", "test", "test_w_ans"]
+    dataset_dir = os.path.join(VQA_DATASET_DIR, dataset_name)
+    annotated_data = json.load(open(os.path.join(dataset_dir, f"aokvqa_{version}_{split_name}.json")))
     coco_dir = os.path.join(COCO_DATASET_DIR, "images")
 
-    chunked_question_ids = get_chunked_question_ids(dataset_dir, split, chunk_id)
+    chunked_question_ids = get_chunked_question_ids(dataset_dir, split_name, chunk_id)
 
-    qa_objects = []
-    for qa_obj in tqdm(dataset, desc=f"Preprocessing {dataset_name} dataset"):
+    dataset = []
+    for qa_obj in tqdm(annotated_data, desc=f"Preprocessing {dataset_name} dataset"):
         question_id = qa_obj["question_id"]
         if chunk_id is not None and question_id not in chunked_question_ids:
             continue
 
-        image_id = qa_obj["image_id"]
-        question = qa_obj["question"]
-        choices = qa_obj["choices"]
         if multiple_choice:
             answer = qa_obj["choices"][qa_obj["correct_choice_idx"]]
         else:
             answer = get_most_common_item(qa_obj["direct_answers"])  # hacky way to get the answer
+
+        choices = qa_obj["choices"]
         random.shuffle(choices)
-        image_path = get_coco_path_image_id(coco_dir, split, image_id)
+        image_path = get_coco_path_image_id(coco_dir, split_name, qa_obj["image_id"])
         qa_dict = {
-            "image_id": image_id,
+            "image_id": qa_obj["image_id"],
             "question_id": question_id,
-            "question": question,
+            "question": qa_obj["question"],
             "image_path": image_path,
             "answer": answer,
+            "answers": qa_obj["direct_answers"],
         }
         if multiple_choice:
             qa_dict["choice"] = choices
+        dataset.append(qa_dict)
 
-        qa_objects.append(qa_dict)
+    logger.info(json.dumps(dataset[0], indent=4))
 
-    logger.info(json.dumps(qa_objects[0], indent=4))
-
-    return qa_objects
+    return dataset
 
 
-def load_vqa_dataset_from_json(dataset_name: str, split: str, chunk_id=None) -> List[Dict]:
-    dataset_dir = os.path.join(VQA_DATASET_DIR, "datasets", dataset_name)
-    question_file = DATASET_CONFIG[dataset_name][split]["question_file"]
-    annotation_file = DATASET_CONFIG[dataset_name][split]["annotation_file"]
-    image_dir = DATASET_CONFIG[dataset_name][split]["image_root"]
-    coco_prefix = DATASET_CONFIG[dataset_name][split]["image_prefix"]
+def load_vqa_dataset_from_json(dataset_name: str, split_name: str, chunk_id=None) -> List[Dict]:
+    dataset_dir = os.path.join(VQA_DATASET_DIR, dataset_name)
+    question_file = DATASET_CONFIG[dataset_name][split_name]["question_file"]
+    annotation_file = DATASET_CONFIG[dataset_name][split_name]["annotation_file"]
+    image_dir = DATASET_CONFIG[dataset_name][split_name]["image_root"]
+    coco_prefix = DATASET_CONFIG[dataset_name][split_name]["image_prefix"]
 
     question_data_fpath = os.path.join(dataset_dir, question_file)
     annotation_data_fpath = os.path.join(dataset_dir, annotation_file)
     image_root = os.path.join(COCO_DATASET_DIR, "images", image_dir)
 
-    chunked_question_ids = get_chunked_question_ids(dataset_dir, split, chunk_id)
+    chunked_question_ids = get_chunked_question_ids(dataset_dir, split_name, chunk_id)
 
     with open(question_data_fpath) as f:
         question_data = json.load(f)
 
-    with open(annotation_data_fpath) as f:
+    with open(annotation_data_fpath, encoding="utf-8") as f:
         answer_data = json.load(f)
         answer_data = answer_data["annotations"]
 
@@ -152,13 +155,12 @@ def load_vqa_dataset_from_json(dataset_name: str, split: str, chunk_id=None) -> 
     return dataset
 
 
-def load_gqa_dataset_from_json(dataset_name: str, split: str) -> List[Dict]:
-    dataset_dir = os.path.join(VQA_DATASET_DIR, "datasets")
-    annotation_file = DATASET_CONFIG[dataset_name][split]["annotation_file"]
-    image_dir = DATASET_CONFIG[dataset_name][split]["image_root"]
+def load_gqa_dataset_from_json(dataset_name: str, split_name: str) -> List[Dict]:
+    annotation_file = DATASET_CONFIG[dataset_name][split_name]["annotation_file"]
+    image_dir = DATASET_CONFIG[dataset_name][split_name]["image_root"]
 
-    annotation_data_fpath = os.path.join(dataset_dir, dataset_name, annotation_file)
-    image_root = os.path.join(dataset_dir, dataset_name, image_dir)
+    annotation_data_fpath = os.path.join(VQA_DATASET_DIR, dataset_name, annotation_file)
+    image_root = os.path.join(VQA_DATASET_DIR, dataset_name, image_dir)
 
     with open(annotation_data_fpath) as f:
         annotated_data = json.load(f)
@@ -166,15 +168,13 @@ def load_gqa_dataset_from_json(dataset_name: str, split: str) -> List[Dict]:
     dataset = []
     for idx in annotated_data:
         qa_obj = annotated_data[idx]
-        imageId = qa_obj["imageId"]
-        question = qa_obj["question"]
-        answer = qa_obj["answer"]
-        image_path = os.path.join(image_root, imageId + ".jpg")
+        image_path = os.path.join(image_root, qa_obj["imageId"] + ".jpg")
         data = {
             "image_path": image_path,
-            "question": question,
-            "answer": answer,
+            "question": qa_obj["question"],
+            "answer": qa_obj["answer"],
             "question_id": idx,
+            "image_id": qa_obj["imageId"],
         }
         dataset.append(data)
 
@@ -183,34 +183,32 @@ def load_gqa_dataset_from_json(dataset_name: str, split: str) -> List[Dict]:
     return dataset
 
 
-def load_visual7w_dataset_from_json(dataset_name: str, split: str, multiple_choice: bool = True) -> List[Dict]:
-    dataset_root = "datasets"
-    fname = os.path.join(VQA_DATASET_DIR, dataset_root, dataset_name, "dataset.json")
+def load_visual7w_dataset_from_json(dataset_name: str, split_name: str, multiple_choice: bool = True) -> List[Dict]:
+    fname = os.path.join(VQA_DATASET_DIR, dataset_name, "dataset.json")
     dataset = json.load(open(fname, "r"))
-    dataset_split = defaultdict(list)
+    dataset_split_name = defaultdict(list)
     for img in dataset["images"]:
-        dataset_split[img["split"]].append(img)
+        dataset_split_name[img["split"]].append(img)
 
-    dataset_dir = os.path.join(VQA_DATASET_DIR, "datasets")
     image_dir = DATASET_CONFIG[dataset_name]["image_root"]
     img_prefix = DATASET_CONFIG[dataset_name]["image_prefix"]
-    image_root = os.path.join(dataset_dir, dataset_name, image_dir)
+    image_root = os.path.join(VQA_DATASET_DIR, dataset_name, image_dir)
 
     dataset = []
-    for img in tqdm(dataset_split[split], desc=f"Preprocessing {dataset_name} dataset"):
-        for pair in img["qa_pairs"]:
-            qa_obj = {}
-            image_id = pair["image_id"]
-            image_path = os.path.join(image_root, img_prefix + str(image_id) + ".jpg")
-            qa_obj["image_path"] = image_path
-            qa_obj["question"] = pair["question"]
-            choices = pair["multiple_choices"] + [pair["answer"]]
-            qa_obj["choice"] = choices
-            qa_obj["question_id"] = pair["qa_id"]
-            qa_obj["answer"] = pair["answer"]
-            dataset.append(qa_obj)
+    for img in tqdm(dataset_split_name[split_name], desc=f"Preprocessing {dataset_name} dataset"):
+        for qa_obj in img["qa_pairs"]:
+            dataset.append(
+                {
+                    "image_path": os.path.join(image_root, f"{img_prefix}{qa_obj['image_id']}.jpg"),
+                    "image_id": qa_obj["image_id"],
+                    "question": qa_obj["question"],
+                    "choice": qa_obj["multiple_choices"] + [qa_obj["answer"]],
+                    "question_id": qa_obj["qa_id"],
+                    "answer": qa_obj["answer"],
+                }
+            )
 
-    if split == "train":
+    if split_name == "train":
         random.shuffle(dataset)
         dataset = dataset[:5000]
         logger.warning("WARNING: Truncating train dataset to 5000 samples")

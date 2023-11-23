@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from typing import Any, Dict, List, Tuple
 
 import torch
@@ -22,6 +23,7 @@ from vqa_zero.inference_utils import (format_last_predictions,
                                       get_output_dir_path,
                                       get_prompt_template_handler,
                                       is_vqa_output_cache_exists,
+                                      is_vqa_output_vicuna_cache_exists,
                                       load_model_and_processors,
                                       save_predictions, save_to_json,
                                       save_vqa_answers,
@@ -37,25 +39,27 @@ class VQAInference:
     def __init__(self, args):
         self.args = args
 
-    def _get_device(self):
+    @staticmethod
+    def get_device():
         return "cuda" if torch.cuda.is_available() else "cpu"
 
-    def _get_autocast_dtype(self):
+    @staticmethod
+    def get_autocast_dtype():
         """Return the best available dtype for autocasting: bfloat16 if available, else float16."""
-        if torch.cuda.is_bf16_supported():
-            return torch.bfloat16
+        if torch.cuda.is_available():
+            if torch.cuda.is_bf16_supported():
+                return torch.bfloat16
         return torch.float16
 
-    def _initialize_dataloader(self, processor, tokenizer, prompt_handler):
+    def _initialize_dataloader(self, prompt_handler, collate_fn):
         dataset_args = {
             "config": self.args,
             "dataset_name": self.args.dataset_name,
             "prompt_handler": prompt_handler,
             "model_name": self.args.model_name,
-            "split": self.args.split,
+            "split_name": self.args.split_name,
         }
         dataset = VQADataset(**dataset_args)
-        collate_fn = collate_fn_builder(processor, tokenizer)
 
         return DataLoader(
             dataset,
@@ -67,17 +71,18 @@ class VQAInference:
         )
 
     def _perform_vqa_inference(self) -> Dict:
-        # Implementation of the VQA inference logic
         if self.args.vqa_format not in ["standard_vqa", "caption_vqa", "cot_vqa"]:
             raise NotImplementedError(
                 f"Provided VQA format {self.args.vqa_format} is either not implemented yet or invalid argument provided."
             )
-        device = self._get_device()
-        autocast_dtype = self._get_autocast_dtype()
+        device = self.get_device()
+        autocast_dtype = self.get_autocast_dtype()
         self.args.autocast_dtype = autocast_dtype
 
         if self.args.few_shot:
-            cache_nearest_neighbor_data(self.args.dataset_name, self.args.task_type == "multiple_choice")
+            cache_nearest_neighbor_data(
+                self.args.dataset_name, self.args.task_type == "multiple_choice", self.args.nearest_neighbor_threshold
+            )
 
         # get prompting handler
         prompt_handler, template_expr = get_prompt_template_handler(self.args)
@@ -90,7 +95,8 @@ class VQAInference:
         model.eval()
 
         batch_size = self.args.batch_size
-        dataloader = self._initialize_dataloader(processor, tokenizer, prompt_handler)
+        collate_fn = collate_fn_builder(processor, tokenizer)
+        dataloader = self._initialize_dataloader(prompt_handler, collate_fn)
 
         logger.info(f" Num examples: \t{len(dataloader.dataset)}")
         logger.info(f" Batch size: \t{batch_size}")
@@ -99,8 +105,6 @@ class VQAInference:
         predictions = {}
         for batch in tqdm(dataloader, desc="Batch"):
             prompt = batch["prompted_question"]
-            if self.args.blind:  # zero out each images pixels, note that images are list of images
-                images = [TF.to_tensor(img) * 0 for img in images]
 
             logger.debug(f"TEXT INPUT: {json.dumps(prompt, indent=2)}")
 
@@ -124,18 +128,21 @@ class VQAInference:
                     temperature=self.args.temperature,
                     num_return_sequences=self.args.num_return_sequences,
                 )
-                generated_outputs = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
-                if processor is not None and processor.padding_side == "left":
+                if processor is not None and processor.tokenizer.padding_side == "left":
                     generated_ids = generated_ids[:, batch["input_ids"].shape[1] :]
-                    generated_outputs = [processor.post_process_generation(gt) for gt in generated_outputs]
+                elif tokenizer is not None and tokenizer.padding_side == "left":
+                    generated_ids = generated_ids[:, batch["input_ids"].shape[1] :]
+
+                generated_outputs = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
 
             elif self.args.model_name == "kosmos2":
                 generated_ids = model.generate(
                     pixel_values=batch["pixel_values"].to("cuda"),
-                    input_ids=batch["input_ids"][:, :-1].to("cuda"),
-                    attention_mask=batch["attention_mask"][:, :-1].to("cuda"),
-                    img_features=None,
-                    img_attn_mask=batch["img_attn_mask"][:, :-1].to("cuda"),
+                    input_ids=batch["input_ids"].to("cuda"),
+                    attention_mask=batch["attention_mask"].to("cuda"),
+                    image_embeds=None,
+                    image_embeds_position_mask=batch["image_embeds_position_mask"].to("cuda"),
+                    use_cache=True,
                     max_new_tokens=self.args.max_length,
                     length_penalty=self.args.length_penalty,
                     num_beams=self.args.num_beams,
@@ -143,7 +150,7 @@ class VQAInference:
                     temperature=self.args.temperature,
                     num_return_sequences=self.args.num_return_sequences,
                 )
-                generated_ids = generated_ids[:, batch["input_ids"].shape[1] - 1 :]
+                generated_ids = generated_ids[:, batch["input_ids"].shape[1] :]
                 generated_texts = processor.batch_decode(generated_ids, skip_special_tokens=True)
                 generated_outputs, entities_list = zip(
                     *[processor.post_process_generation(gt) for gt in generated_texts]
@@ -170,42 +177,40 @@ class VQAInference:
                 generated_ids = generated_ids[:, batch["input_ids"].shape[1] :]
                 generated_outputs = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
 
-            elif self.args.model_name == "llava":
-                from LLaVA.llava.conversation import (SeparatorStyle,
-                                                      conv_templates)
-                from LLaVA.llava.mm_utils import KeywordsStoppingCriteria
+            elif "minigpt4" in self.args.model_name:
+                from MiniGPT4.minigpt4.common.eval_utils import prepare_texts
+                from MiniGPT4.minigpt4.conversation.conversation import \
+                    CONV_VISION_minigptv2
 
-                conv = conv_templates[processor.conv_mode].copy()
-                stop_str = conv.sep if conv.sep_style != SeparatorStyle.TWO else conv.sep2
-                keywords = [stop_str]
-                stopping_criteria = (
-                    [KeywordsStoppingCriteria(keywords, processor.tokenizer, input_ids)]
-                    if conv.version == "v0"
-                    else None
+                conv_temp = CONV_VISION_minigptv2.copy()
+
+                questions = batch["prompted_question"]
+                images = batch["image_tensors"]
+
+                texts = prepare_texts(questions, conv_temp)  # warp the texts with conversation template
+                generated_outputs = model.generate(
+                    images, texts, max_new_tokens=self.args.max_length, do_sample=self.args.do_sample
                 )
+
+            elif "llava" in self.args.model_name:
                 input_ids = batch["input_ids"]
                 image_tensor = batch["image_tensors"]
-                input_ids = input_ids.cuda()
+                input_ids = input_ids.to("cuda", non_blocking=True)
 
-                output_ids = model.generate(
-                    input_ids,
-                    images=image_tensor.half().cuda(),
-                    num_beams=self.args.num_beams,
-                    max_new_tokens=self.args.max_length,
-                    length_penalty=self.args.length_penalty,
-                    use_cache=True,
-                    stopping_criteria=stopping_criteria,
-                    do_sample=self.args.do_sample,
-                    temperature=self.args.temperature,
-                    num_return_sequences=self.args.num_return_sequences,
-                )
-                generated_outputs = processor.tokenizer.batch_decode(
-                    output_ids[:, input_ids.shape[1] :], skip_special_tokens=True
-                )
-                generated_outputs = [out.strip() for out in generated_outputs]
-                generated_outputs = [
-                    out[: -len(stop_str)] if out.endswith(stop_str) else out for out in generated_outputs
-                ]
+                with torch.inference_mode():
+                    generated_ids = model.generate(
+                        input_ids,
+                        images=image_tensor.to(dtype=torch.float16, device="cuda", non_blocking=True),
+                        num_beams=self.args.num_beams,
+                        max_new_tokens=self.args.max_length,
+                        length_penalty=self.args.length_penalty,
+                        use_cache=True,
+                        do_sample=self.args.do_sample,
+                        temperature=self.args.temperature,
+                        num_return_sequences=self.args.num_return_sequences,
+                    )
+                generated_ids = generated_ids[:, batch["input_ids"].shape[1] :]
+                generated_outputs = processor.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
 
             else:
                 inputs = {
@@ -224,9 +229,9 @@ class VQAInference:
                     num_return_sequences=self.args.num_return_sequences,
                 )
                 generated_outputs = processor.batch_decode(generated_ids, skip_special_tokens=True)
-
             keys = ["question", "prompted_question", "question_id", "answer"]
 
+            generated_outputs = [out.strip() for out in generated_outputs]
             for i in range(0, len(generated_outputs), self.args.num_return_sequences):
                 j = i // self.args.num_return_sequences  # integer division to get the group index (self-consistency)
                 example = {key: batch[key][j] for key in keys}
@@ -236,31 +241,34 @@ class VQAInference:
                     else generated_outputs[i : i + self.args.num_return_sequences]
                 )
                 predictions[example["question_id"]] = example
+                logger.debug(f"GENERATED OUTPUT: {json.dumps(example, indent=2)}")
 
             formatted_message = format_last_predictions(
                 batch["question"], generated_outputs, self.args.num_return_sequences
             )
-            logger.debug(formatted_message)
+            logger.info(formatted_message)
 
         return predictions
 
     def _evaluate_predictions(self, predictions: Dict, **kwargs) -> None:
-        # Implementation of the evaluation logic
         logger.info("Running evaluation...")
 
         predictions = postprocess_cleanup_answer(self.args, predictions, logger)
         output_dir = get_output_dir_path(self.args, **kwargs)
 
-        save_to_json(os.path.join(output_dir, "predictions.json"), predictions)  # for debugging
-        save_to_json(os.path.join(output_dir, "configs.json"), vars(self.args))
+        prediction_file_name = os.path.join(output_dir, "predictions.json")
+        run_config_file_name = os.path.join(output_dir, "configs.json")
+        save_to_json(prediction_file_name, predictions)  # for debugging
+        save_to_json(run_config_file_name, vars(self.args))
         self._save_and_evaluate_predictions(output_dir, predictions)
 
     def _save_and_evaluate_predictions(self, output_dir, predictions: Dict, vicuna_ans_parser=False) -> None:
         if self.args.chunk_id is not None:  # chunked evaluation for vqa_v2
             save_vqa_answers_aggregate_chunks(output_dir, self.args.dataset_name, vicuna_ans_parser=vicuna_ans_parser)
-
-            if os.path.join(output_dir, "annotations+vqa_answers.json"):
-                eval_vqa(self.args, output_dir, vicuna_ans_parser)
+            aggregated_output_dir = output_dir.replace(f"chunked/chunk{self.args.chunk_id}", "")
+            final_answer_file_name = os.path.join(aggregated_output_dir, "annotations+vqa_answers.json")
+            if os.path.exists(final_answer_file_name):
+                eval_vqa(self.args, aggregated_output_dir, vicuna_ans_parser)
             return
 
         multiple_choice = self.args.task_type == "multiple_choice"
@@ -290,10 +298,22 @@ class VQAInference:
         if eval_func:
             eval_func(self.args, output_dir, vicuna_ans_parser)
 
+    def _get_train_split_name(self):
+        if self.args.dataset_name == "gqa":
+            train_split = "train_bal"
+        elif self.args.dataset_name == "vqa_v2":
+            train_split = "train_30k"
+        else:
+            train_split = "train"
+
+        return train_split
+
     def _handle_caption_and_cot_generation(self, prompt_handler) -> None:
-        # Implementation of the caption and chain-of-thought generation logic
         if self.args.gen_model_name is None:
             self.args.gen_model_name = self.args.model_name
+
+        train_split_name = self._get_train_split_name()
+        eval_split_name = self.args.split_name
 
         def get_caption_generator(args):
             if args.gen_model_name == "promptcap":
@@ -301,20 +321,21 @@ class VQAInference:
             else:
                 return CaptionGenerator(args, device="cuda")
 
-        train_split = "train_bal" if self.args.dataset_name == "gqa" else "train"
         if self.args.vqa_format == "caption_vqa":
             caption_gen = get_caption_generator(self.args)
             if self.args.few_shot:
-                caption_gen.generate_caption(prompt_handler, train_split)
-            caption_gen.generate_caption(prompt_handler, self.args.split)
+                caption_gen.generate_caption(prompt_handler, train_split_name)
+            caption_gen.generate_caption(prompt_handler, eval_split_name)
 
         elif self.args.vqa_format == "cot_vqa":
             cot_gen = ChainOfThoughtGenerator(self.args, device="cuda")
             if self.args.few_shot:
-                cot_gen.generate_chain_of_thought_rationale(prompt_handler, train_split)
+                cot_gen.generate_chain_of_thought_rationale(prompt_handler, train_split_name)
 
-            if "iterative" in self.args.prompt_name or "mixer" in self.args.prompt_name:
-                cot_gen.generate_chain_of_thought_rationale(prompt_handler, self.args.split)
+            if "rationale" in self.args.prompt_name and (
+                "iterative" in self.args.prompt_name or "mixer" in self.args.prompt_name
+            ):
+                cot_gen.generate_chain_of_thought_rationale(prompt_handler, eval_split_name)
 
     def run(self) -> None:
         config_manager = VQAConfigManager(self.args)
@@ -337,37 +358,24 @@ class VQAInference:
 class VicunaInference(VQAInference):
     def __init__(self, args):
         super().__init__(args)
-        self.language_model_name = "Open-Orca/Mistral-7B-OpenOrca"
+        self.language_model_name = "HuggingFaceH4/zephyr-7b-beta"
         self.answer_extractor = LlmEngine(language_model_name=self.language_model_name, device="cuda")
 
     def _evaluate_predictions_vicuna(self) -> None:
-        # Implementation of the Vicuna evaluation logic
         logger.info("Running evaluation (vicunallm)...")
 
         output_dir = get_output_dir_path(self.args)
-        fpath = os.path.join(output_dir, "predictions.json")
-        with open(fpath, "r") as f:
+        prediction_file_name = os.path.join(output_dir, "predictions.json")
+        with open(prediction_file_name, "r") as f:
             predictions = json.load(f)
 
         batch_size = 16 if "rationale" in self.args.prompt_name else 32
+        batch_size = torch.cuda.device_count() * batch_size
         predictions = extract_answers_from_predictions_vicuna(predictions, self.answer_extractor, batch_size=batch_size)
         predictions = postprocess_cleanup_vicuna(self.args.dataset_name, predictions)
 
-        save_to_json(fpath, predictions)  # for debugging
+        save_to_json(prediction_file_name, predictions)  # for debugging
         self._save_and_evaluate_predictions(output_dir, predictions, vicuna_ans_parser=True)
-
-    def _check_and_reinitialize_model(self) -> None:
-        """
-        Check and reinitialize the model based on the prompt name.
-        """
-        model_name_mapping = {True: "lmsys/vicuna-13b-v1.5", False: "Open-Orca/Mistral-7B-OpenOrca"}
-
-        is_rationale_in_prompt = "rationale" in self.args.prompt_name
-        desired_model_name = model_name_mapping[is_rationale_in_prompt]
-
-        if self.answer_extractor.language_model_name != desired_model_name:
-            self.answer_extractor.language_model_name = desired_model_name
-            self.answer_extractor.load_pretrained_model_tokenizer()
 
     def run(self) -> None:
         super().run()
@@ -380,7 +388,8 @@ class VicunaInference(VQAInference):
 
         for prompt_name in all_prompts:
             self.args.prompt_name = prompt_name
-            # self._check_and_reinitialize_model()  # hack to reinitialize vicuna llm for rationale and non-rationale prompts
+            if is_vqa_output_vicuna_cache_exists(self.args):
+                continue
             format_type = "chain_of_thought_samples" if "rationale" in prompt_name else "samples"
             self.answer_extractor._load_in_context_examples(
                 dataset_name=self.args.dataset_name, format_type=format_type

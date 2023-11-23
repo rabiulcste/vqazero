@@ -5,7 +5,7 @@
 
 <a href='https://rabiul.me/vqazero/'><img src='https://img.shields.io/badge/Project-Page-Green'></a>  <a href='https://arxiv.org/abs/2306.09996'><img src='https://img.shields.io/badge/Paper-Arxiv-red'></a>
 
-<img src="docs/vqa_prompt_teaser.png" alt="VQA Prompt Teaser" width="850"/>
+<img src="docs/vqa_prompt_teaser.png" alt="VQA Prompt Teaser" width="500"/>
 
 ## Table of Contents
 - [Installation](#installation)
@@ -45,7 +45,7 @@ We supports the following VQA formats:
 ### Prompt Templates
 We have a list of prompt templates that can be used with different VQA formats. Please check the `prompts/templates/{dataset_name}`.
 
-<img src="docs/vqa_prompt_templates.png" alt="VQA Prompt Templates" width="850"/>
+<img src="docs/vqa_prompt_templates.png" alt="VQA Prompt Templates" width="500"/>
 
 
 ## Datasets
@@ -112,32 +112,32 @@ We report the baseline and best setting results. Please check the paper for more
 
 |             | **BLIP2 Flan-T5** | **BLIP2 OPT** | **Kosmos2** | **OpenFlamingo** | **LLaVA** |
 |-------------|-------------------|---------------|-------------|------------------|----------|
-| **Baseline**| 48.48             | 37.39         | 29.94       | 20.51            | 44.84    |
-| **Best**    | 51.4              | 46.29         | 36.54       | 37.38            | 48.01    |
+| **Baseline**| 50.13             | 42.7         | 40.33        |       18.29        | 44.84    |
+| **Best**    | 50.55             | 46.29        | 43.09        |         42.48      | 46.86    |
 
 
 #### AOKVQA
 
 |             | **BLIP2 Flan-T5** | **BLIP2 OPT** | **Kosmos2** | **OpenFlamingo** | **LLaVA** |
 |-------------|-------------------|---------------|-------------|------------------|----------|
-| **Baseline**| 51.20             | 38.25         | 32.91       | 28.44            | 52.69    |
-| **Best**    | 54.98             | 49.39         | 38.26       | 39.0             | 52.32    |
+| **Baseline**| 51.20             | 45.57         | 40.85       |        17.27        | 52.69   |
+| **Best**    | 54.98             | 49.39         | 43.60      |       44.13         | 52.32   |
 
 
 #### GQA
 
 |             | **BLIP2 Flan-T5** | **BLIP2 OPT** | **Kosmos2** | **OpenFlamingo** | **LLaVA** |
 |-------------|-------------------|---------------|-------------|------------------|----------|
-| **Baseline**| 44.46             | 28.75         | 32.31       |  28.44           | 38.40    |
-| **Best**    | 47.57             | 41.99         | 36.17       |  38.04           | 41.00    |
-
+| **Baseline**| 44.46             | 38.46         | 37.33       |     26.37        | 38.40    |
+| **Best**    | 47.01             | 41.99         | 40.13       |     41.00        | 42.65    |
+ 
 
 #### VQAv2
 
 |             | **BLIP2 Flan-T5** | **BLIP2 OPT** | **Kosmos2** | **OpenFlamingo** | **LLaVA** |
 |-------------|-------------------|---------------|-------------|------------------|----------|
-| **Baseline**|              |          |        |                  |     |
-| **Best**    |              |          |        |                  |     |
+| **Baseline**|    66.66     |      54.53    |    53.52     |         35.41     |   56.2    |
+| **Best**    |    71.37     |      62.81    |    57.33     |         58.0      |  65.32    |
 
 
 

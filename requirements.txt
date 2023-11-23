@@ -1,0 +1,14 @@
+arrow==13.0.0
+transformers
+datasets
+accelerate
+sentence_transformers
+spacy
+thefuzz # for soft-vqa accuracy
+promptcap # we've custom batch inference support for promptcap
+vllm # must load cuda/11.x before installing this package
+einops
+
+# Install PyTorch separately with the appropriate CUDA version:
+# pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu117
+

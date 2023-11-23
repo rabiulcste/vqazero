@@ -1,3 +1,5 @@
+import torch
+
 # Constants
 BATCH_SIZE = "batch_size"
 MAX_LENGTH = "max_length"
@@ -27,7 +29,6 @@ class VQAConfigManager:
             MAX_LENGTH: 10,
             LENGTH_PENALTY: -1.0,
             NO_REPEAT_NGRAM_SIZE: 0,
-            BATCH_SIZE: 64,
             DO_SAMPLE: False,
             TEMPERATURE: 1.0,
         }
@@ -41,18 +42,12 @@ class VQAConfigManager:
         return wrapper
 
     @_config_updater
-    def _update_based_on_ans_parser(self):
-        if self.args.vicuna_ans_parser:
-            return {MAX_LENGTH: 30}
-        return {}
-
-    @_config_updater
     def _update_based_on_prompt_name(self):
         updates = {}
         if "rationale" in self.args.prompt_name and (
             "mixer" not in self.args.prompt_name or "iterative" not in self.args.prompt_name
         ):
-            updates.update({MAX_LENGTH: 128, NO_REPEAT_NGRAM_SIZE: 3, BATCH_SIZE: 16})
+            updates.update({MAX_LENGTH: 128, NO_REPEAT_NGRAM_SIZE: 3})
         if "iterative" in self.args.prompt_name:
             updates.update({MAX_LENGTH: 10, LENGTH_PENALTY: -1.0})
         return updates
@@ -62,39 +57,17 @@ class VQAConfigManager:
         updates = {}
         if "llava" in self.args.model_name:
             updates.update({BATCH_SIZE: 2})
+        else:
+            updates[BATCH_SIZE] = 8
 
         if "rationale" not in self.args.prompt_name:
-            if "xxl" in self.args.model_name or "kosmos" in self.args.model_name or "redpajama" in self.args.model_name:
-                updates[BATCH_SIZE] = 16
-            if "67b" in self.args.model_name:
-                updates[BATCH_SIZE] = 8
-            if "llava" in self.args.model_name:
-                updates.update({MAX_LENGTH: 30})
-            if "open_flamingo" in self.args.model_name:
+            if "llava" in self.args.model_name or "open_flamingo" in self.args.model_name or "kosmos" in self.args.model_name:
                 updates.update({MAX_LENGTH: 30})
 
-        if "rationale" not in self.args.prompt_name and self.args.gen_model_name:
-            if "xxl" in self.args.gen_model_name or "kosmos" in self.args.gen_model_name or "redpajama" in self.args.gen_model_name:
-                updates[BATCH_SIZE] = 16
-            if "67b" in self.args.gen_model_name:
-                updates[BATCH_SIZE] = 8
-            if "llava" in self.args.gen_model_name:
-                updates.update({MAX_LENGTH: 30})
-            if "open_flamingo" in self.args.gen_model_name:
-                updates.update({MAX_LENGTH: 30})
+        if "minigpt4" in self.args.model_name:
+            updates.update({MAX_LENGTH: 128})
+
         return updates
-
-    @_config_updater
-    def _update_based_on_few_shot(self):
-        if self.args.few_shot:
-            return {BATCH_SIZE: 16}
-        return {}
-
-    @_config_updater
-    def _update_based_on_vqa_format(self):
-        if self.args.vqa_format == "caption_vqa":
-            return {BATCH_SIZE: 16}
-        return {}
 
     @_config_updater
     def _update_based_on_self_consistency(self):
@@ -102,14 +75,20 @@ class VQAConfigManager:
             return {NUM_BEAMS: 1, NUM_RETURN_SEQUENCES: 30, TEMPERATURE: 0.7, DO_SAMPLE: True}
         return {}
 
+    def _update_based_on_gpu_count(self, config_updates):
+        gpu_count = torch.cuda.device_count()
+        current_batch_size = config_updates.get(BATCH_SIZE, getattr(self.args, BATCH_SIZE, None))
+
+        if current_batch_size is not None and gpu_count > 1:
+            config_updates[BATCH_SIZE] = gpu_count * current_batch_size
+        return config_updates
+
     def update_configs(self) -> dict:
         config_updates = self._base_configuration()
-        # config_updates = self._update_based_on_ans_parser(config_updates)
         config_updates = self._update_based_on_prompt_name(config_updates)
-        config_updates = self._update_based_on_few_shot(config_updates)
-        config_updates = self._update_based_on_vqa_format(config_updates)
         config_updates = self._update_based_on_model_name(config_updates)
         config_updates = self._update_based_on_self_consistency(config_updates)
+        config_updates = self._update_based_on_gpu_count(config_updates)
         return config_updates
 
     def apply_updates_to_args(self):

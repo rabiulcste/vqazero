@@ -58,12 +58,20 @@ templates:
     name: prefix_describe_the_scene    
     author: Rabiul Awal
 
-  0b660a7d-6e81-44c8-b6f5-6e3662c47f79: !Template
-    id: 0b660a7d-6e81-44c8-b6f5-6e3662c47f79
-    jinja: 'Describe the image'
+  a7f6d5e4-3b2a-1c9d-0e8f-9b8a7c6d5f4e: !Template
+    id: a7f6d5e4-3b2a-1c9d-0e8f-9b8a7c6d5f4e
+    jinja: 'Describe this image in detail:'
     metadata: !TemplateMetadata
       choices_in_prompt: false
     name: prefix_describe_the_image
+    author: Rabiul Awal
+
+  0b660a7d-6e81-44c8-b6f5-6e3662c47f79: !Template
+    id: 0b660a7d-6e81-44c8-b6f5-6e3662c47f79
+    jinja: 'Please describe the image'
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_please_describe_the_image
     author: Rabiul Awal
 
   1b4aa4b4-c84c-4d93-a9f9-42420486a7a3: !Template

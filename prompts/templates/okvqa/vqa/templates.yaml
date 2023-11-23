@@ -51,6 +51,19 @@ templates:
       choices_in_prompt: false
     name: prefix_your_task_knowledge_qa_short_answer
   
+  aac913af-4369-488a-8ea4-a905068cb755: !Template
+    id: aac913af-4369-488a-8ea4-a905068cb755
+    jinja: |
+      {% if fewshot == True -%}
+      {% if caption -%} {{ caption }} {% endif -%} Question: {{ question }} {% if choice -%} Choices: {{ choice }} Correct {% endif -%} Answer: {{ answer }}
+      {% else -%}
+      {% if caption -%} {{ caption }} {% endif -%} Your task is to answer a knowledge based question. Question: {{ question }} {% if choice -%} Choices: {{ choice }} Correct {% endif -%} Answer:
+      {% endif %}
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_your_task_knowledge_qa_answer
+
+
   ca0d5917-4507-40a1-8026-4c5e096b3d7b: !Template
     id: ca0d5917-4507-40a1-8026-4c5e096b3d7b
     jinja: 'Your task is to answer knowledge based question. Keep it short and precise. {{ caption }} {{ question }}'
@@ -169,8 +182,8 @@ templates:
     id: 6379cbd5-f3c5-484f-833a-75e33b863b0b
     jinja: |
       {% if caption -%} {{ caption }} {% endif -%}
-      Q: {{ question }}
-      A: Let's think step by step.
+      Question: {{ question }}
+      Answer: Let's think step by step.
     metadata: !TemplateMetadata
       choices_in_prompt: false
     name: prefix_think_step_by_step_rationale
@@ -302,15 +315,3 @@ templates:
       choices_in_prompt: false
     name: prefix_rationale_behind_answer
     author: Rabiul Awal
-
-  aac913af-4369-488a-8ea4-a905068cb755: !Template
-    id: aac913af-4369-488a-8ea4-a905068cb755
-    jinja: |
-      % if fewshot == True -%}
-      {% if caption -%} {{ caption }} {% endif -%} Question: {{ question }} {% if choice -%} {{ choice }} {% endif -%} Answer: {{ answer }}
-      {% else -%}
-      {% if caption -%} {{ caption }} {% endif -%} Your task is to answer a knowledge based question. Question: {{ question }} {% if choice -%} {{ choice }} {% endif -%} Answer:
-      {% endif %}
-    metadata: !TemplateMetadata
-      choices_in_prompt: false
-    name: prefix_your_task_knowledge_qa_answer

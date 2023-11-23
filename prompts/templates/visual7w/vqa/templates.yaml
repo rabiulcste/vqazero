@@ -126,11 +126,25 @@ templates:
     id: ef02b0f5-0ea5-4b83-9cad-5569da3f3cb4
     jinja: |
       {% if fewshot == True -%}
-      {% if caption -%} {{ caption }} {% endif -%} Question: {{ question }} {% if choice -%} {{ choice }} {% endif -%} Short answer: {{ answer }}
+      {% if caption -%} {{ caption }} {% endif -%} Question: {{ question }} {% if choice -%} Select the correct one from choices: {{ choice }} Correct {% endif -%} Answer: {{ answer }}
       {% else -%}
-      {% if caption -%} {{ caption }} {% endif -%} Your task is to provide an answer that may require object-level grounded reasoning. Question: {{ question }} {% if choice -%} {{ choice }} {% endif -%} Short answer:
+      {% if caption -%} {{ caption }} {% endif -%} Your task is to provide an answer that may require object-level grounded reasoning. Question: {{ question }} {% if choice -%} Select the correct one from choices: {{ choice }} Correct {% endif -%} Answer:
       {% endif %}
       
     metadata: !TemplateMetadata
       choices_in_prompt: false
     name: prefix_your_task_grounded_qa_short_answer
+
+
+  ef02b0f5-1ea5-4b83-9cad-5569da3f3cb4: !Template
+    id: ef02b0f5-1ea5-4b83-9cad-5569da3f3cb4
+    jinja: |
+      {% if fewshot == True -%}
+      {% if caption -%} {{ caption }} {% endif -%} Question: {{ question }} {% if choice -%} Choices: {{ choice }} {% endif -%} Answer: {{ answer }}
+      {% else -%}
+      {% if caption -%} {{ caption }} {% endif -%} Your task is to provide an answer that may require object-level grounded reasoning. Question: {{ question }} {% if choice -%} Choices: {{ choice }} {% endif -%} Answer:
+      {% endif %}
+      
+    metadata: !TemplateMetadata
+      choices_in_prompt: false
+    name: prefix_your_task_grounded_qa_answer

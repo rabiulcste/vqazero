@@ -22,10 +22,13 @@ TEMPLATES_FOLDER_PATH = pkg_resources.resource_filename(__name__, "templates")
 
 env = Environment(loader=BaseLoader)
 
+
 def choice(choices):
     return random.choice(choices)
 
+
 env.filters["choice"] = choice
+
 
 class Template(yaml.YAMLObject):
     """
@@ -210,7 +213,6 @@ class TemplateCollection:
     """
 
     def __init__(self):
-
         # Dict of all the DatasetTemplates, key is the tuple (dataset_name, subset_name)
         self.datasets_templates: Dict[(str, Optional[str]), DatasetTemplates] = self._collect_datasets()
 

@@ -1,3 +1,4 @@
+import copy
 import json
 import os
 import re
@@ -9,7 +10,6 @@ from PIL import Image
 from promptcap import PromptCap
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from vllm import LLM, SamplingParams
 
 from dataset_zoo.custom_dataset import (VQADataset, collate_fn,
                                         collate_fn_builder)
@@ -23,6 +23,14 @@ from vqa_zero.inference_utils import (apply_prompt_to_example_winoground,
 logger = Logger(__name__)
 
 
+def set_cuda_visible_devices():
+    available_gpus = [i for i in range(torch.cuda.device_count())]
+    os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(map(str, available_gpus))
+
+
+set_cuda_visible_devices()
+
+
 class CaptionGenerator:
     """
     This class is used to generate captions for the images in the VQA dataset.
@@ -32,18 +40,21 @@ class CaptionGenerator:
         self.args = args
         self.data = None  # caption data
         self.device = device
+        self.gpu_count = torch.cuda.device_count()
 
-    def _initialize_dataloader(self, prompt_handler: PromptingHandler, processor, tokenizer, split: str):
-        batch_size = 2 if self.args.gen_model_name == "llava" else 32  # hardcoded for now
+    def _initialize_dataloader(self, split_name: str, prompt_handler: PromptingHandler, collate_fn):
+        config = copy.copy(self.args)
+        if "train" in split_name:  # hack to avoid chunking for train split for few-shot inference (cvpr submission)
+            config.chunk_id = None
+
+        batch_size = 3 if self.args.gen_model_name == "llava" else 20 * self.gpu_count  # hardcoded for now
         dataset_args = {
-            "config": self.args,
+            "config": config,
             "dataset_name": self.args.dataset_name,
             "prompt_handler": prompt_handler,
-            "model_name": self.args.gen_model_name,
-            "split": split,
+            "split_name": split_name,
         }
         dataset = VQADataset(**dataset_args)
-        collate_fn = collate_fn_builder(processor, tokenizer)
 
         return DataLoader(
             dataset,
@@ -70,15 +81,17 @@ class CaptionGenerator:
         )
         return split_text[0] if len(split_text) > 1 else text
 
-    def generate_caption(self, prompt_handler: PromptingHandler, split="val"):
-        if os.path.exists(self.get_file_path(split)):
-            logger.info(f"Caption data already exists. You can load it from cache {self.get_file_path(split)}")
+    def generate_caption(self, prompt_handler: PromptingHandler, split_name="val"):
+        output_fname = self.get_output_file_name(split_name)
+        if os.path.exists(output_fname):
+            logger.info(f"Caption data already exists. You can load it from cache {output_fname}")
             return
 
         self.model, self.processor, self.tokenizer = load_model_and_processors(
             self.args.gen_model_name, self.args.device, self.args.autocast_dtype
         )
-        dataloader = self._initialize_dataloader(prompt_handler, self.processor, self.tokenizer, split)
+        collate_fn = collate_fn_builder(self.processor, self.tokenizer)
+        dataloader = self._initialize_dataloader(split_name, prompt_handler, collate_fn)
 
         logger.info(
             f" Generating caption data for {self.args.dataset_name} dataset."
@@ -102,7 +115,7 @@ class CaptionGenerator:
         self.free_memory("model")  # free memory after caption generation
 
         all_generated_captions = self.apply_formatting(all_generated_captions, prompt_handler)
-        generated_captions = self.dense_captioning(all_generated_captions, questions)
+        generated_captions = self.dense_captioning_using_llm(all_generated_captions, questions)
 
         output = {}
         for question_id, caption in zip(question_ids, generated_captions):
@@ -111,7 +124,7 @@ class CaptionGenerator:
         for question, caption, answer in zip(questions, generated_captions, answers):
             logger.info(f"Question = {question}, Caption = {caption}, Answer = {answer}")
 
-        self.save(output, split)
+        self.save_to_json(output, output_fname)
 
     def apply_formatting(self, generated_captions: List[str], prompt_handler) -> List[str]:
         # these are fixed streps for all caption generation
@@ -149,6 +162,8 @@ class CaptionGenerator:
             logger.debug(f"all prompts: {json.dumps(all_prompts, indent=2)}")
 
             if self.llm_engine.vllm_enabled:
+                from vllm import LLM, SamplingParams
+
                 sampling_params = SamplingParams(
                     n=1,
                     best_of=num_beams,
@@ -187,15 +202,17 @@ class CaptionGenerator:
 
         return all_generated_outputs
 
-    def dense_captioning(self, generated_captions: List[str], questions: List[str]):
+    def dense_captioning_using_llm(self, generated_captions: List[str], questions: List[str]):
         if len(generated_captions) == len(questions):
             return generated_captions
 
         self.llm_engine = self._load_llm_engine()
         n_seq = len(generated_captions) // len(questions)
         message_groups = [generated_captions[i : i + n_seq] for i in range(0, len(generated_captions), n_seq)]
+
+        max_gpu_batch_size = 16 * self.gpu_count
         dense_captions = self.generate_dense_caption_from_messages(
-            message_groups, max_gpu_batch=12, num_examples_in_task_prompt=4
+            message_groups, max_gpu_batch=max_gpu_batch_size, num_examples_in_task_prompt=4
         )
 
         return dense_captions
@@ -237,7 +254,9 @@ class CaptionGenerator:
         generated_texts = self.processor.batch_decode(generated_ids, skip_special_tokens=True)
         generated_outputs, entities_list = zip(*[self.processor.post_process_generation(gt) for gt in generated_texts])
         entity_lists_str = [", ".join(item[0] for item in sublist) for sublist in entities_list]
-        generated_outputs = [f"{text.rstrip('.')} ({entities})" for text, entities in zip(generated_outputs, entity_lists_str)]
+        generated_outputs = [
+            f"{text.rstrip('.')} ({entities})" for text, entities in zip(generated_outputs, entity_lists_str)
+        ]
         logger.debug(f"GROUNDING: {generated_outputs}")
 
         return generated_outputs
@@ -315,9 +334,9 @@ class CaptionGenerator:
     def _generate(self, batch):
         if self.args.gen_model_name.startswith("blip"):
             inputs = {
-                "input_ids": batch["input_ids"].to(self.device),
-                "attention_mask": batch["attention_mask"].to(self.device),
-                "pixel_values": batch["pixel_values"].to(self.device, self.args.autocast_dtype),
+                "input_ids": batch["input_ids"].to(self.model.device),
+                "attention_mask": batch["attention_mask"].to(self.model.device),
+                "pixel_values": batch["pixel_values"].to(self.model.device, self.args.autocast_dtype),
             }
             generated_captions = self.generate_blip2(inputs)
 
@@ -327,7 +346,7 @@ class CaptionGenerator:
         elif self.args.gen_model_name.startswith("open_flamingo"):
             generated_captions = self.generate_flamingo(batch)
 
-        elif self.args.model_name == "llava":
+        elif self.args.gen_model_name == "llava":
             generated_captions = self.generate_llava(batch)
 
         else:
@@ -344,14 +363,13 @@ class CaptionGenerator:
 
         return generated_captions
 
-    def save(self, output_captions, split: str):
-        fname = self.get_file_path(split)
+    def save_to_json(self, output_captions, fname: str):
         with open(fname, "w") as f:
             json.dump(output_captions, f, ensure_ascii=False, indent=4)
 
         logger.info(f"Saved generated captions to {fname}")
 
-    def get_file_path(self, split: str) -> str:
+    def get_output_dir_path(self, split_name) -> str:
         required_args = [self.args.dataset_name, self.args.gen_model_name, self.args.vqa_format, self.args.prompt_name]
         if any(val is None for val in required_args):
             raise ValueError(
@@ -360,7 +378,7 @@ class CaptionGenerator:
             )
         subdir_prefix = self.args.prompt_name.split(",")[1]
         # TODO: design a better way to handle this
-        dir_path = os.path.join(
+        path_components = [
             OUTPUT_DIR,
             "cache",
             "generated_caption_dumps",
@@ -368,11 +386,26 @@ class CaptionGenerator:
             self.args.gen_model_name,  # "git_large_textcaps",
             self.args.vqa_format,
             subdir_prefix,
-            split,
-        )
+            split_name,
+        ]
+        if self.args.chunk_id is not None:
+            path_components.append("chunked")
+            path_components.append(f"chunk{self.args.chunk_id}")
+
+        dir_path = os.path.join(*path_components)
         os.makedirs(dir_path, exist_ok=True)
-        file_path = os.path.join(dir_path, f"output.json")
-        return file_path
+
+        return dir_path
+
+    def get_output_file_name(self, split_name: str) -> str:
+        dir_path = self.get_output_dir_path(split_name)
+        output_file_path = os.path.join(dir_path, f"output.json")
+        return output_file_path
+
+    def get_cache_file_path(self, split_name: str) -> str:
+        dir_path = self.get_output_dir_path(split_name)
+        cache_file_name = os.path.join(dir_path, f"cached_output.json")
+        return cache_file_name
 
     def get_prompt_str_for_prefix_caption(self, prompt_handler: PromptingHandler, questions: List[str]) -> List[str]:
         if "promptcap" in prompt_handler.prompt_name:
@@ -382,7 +415,7 @@ class CaptionGenerator:
         elif prompt_handler.prompt_name.startswith("prefix_"):
             prompt_txt = prompt_handler.prompt.apply({})[0]
             if self.args.gen_model_name == "kosmos2":
-                prompt_txt = f"<grounding> {prompt_txt}" 
+                prompt_txt = f"<grounding> {prompt_txt}"
             logger.debug(f"PROMPT FOR CAPTION GENERATION: {prompt_txt}")
         else:
             prompt_txt = ""
@@ -408,9 +441,9 @@ class CaptionGeneratorWinoground(CaptionGenerator):
         return batch
 
     def generate_caption(self, prompt_handler: PromptingHandler):
-        fname = self.get_file_path(split="test")
-        if os.path.exists(fname):
-            logger.info(f"Caption data already exists. You can load it from cache {fname}")
+        output_fname = self.get_output_file_name(split_name="test")
+        if os.path.exists(output_fname):
+            logger.info(f"Caption data already exists. You can load it from cache {output_fname}")
             return
 
         dataloader = load_dataset("facebook/winoground", use_auth_token=True)["test"]
@@ -422,7 +455,7 @@ class CaptionGeneratorWinoground(CaptionGenerator):
             f" Generating caption data for {self.args.dataset_name} dataset."
             f" It may take a few minutes depending on your dataset size. Please wait..."
         )
-        output = {}
+        results = {}
         all_generated_captions = []
         questions = []
         for example in tqdm(dataloader):
@@ -447,14 +480,14 @@ class CaptionGeneratorWinoground(CaptionGenerator):
             all_generated_captions.extend(generated_captions)
             questions.extend(caption_texts)
 
-        generated_captions = self.dense_captioning(all_generated_captions, questions)
+        generated_captions = self.dense_captioning_using_llm(all_generated_captions, questions)
 
         # assign two captions to each example
         logger.debug(f"all_generated_captions len: {len(generated_captions)}")
         for i, example in enumerate(dataloader):
-            output[example["id"]] = [generated_captions[i * 2], generated_captions[i * 2 + 1]]
+            results[example["id"]] = [generated_captions[i * 2], generated_captions[i * 2 + 1]]
 
-        self.save(output, split="test")
+        self.save_to_json(results, output_fname)
 
 
 class PromptCapGenerarator(CaptionGenerator):
@@ -466,18 +499,16 @@ class PromptCapGenerarator(CaptionGenerator):
         self.promptcap = PromptCap("vqascore/promptcap-coco-vqa")  # Load the PromptCap model
         self.promptcap.model.to(device)
 
-    def generate_caption(self, prompt_handler: PromptingHandler, split: str):
-        if os.path.exists(self.get_file_path(split)):
-            logger.info(f"Caption data already exists. You can load it from cache {self.get_file_path(split)}")
-            return
+    def _initialize_dataloader(self, split_name: str):
+        config = copy.copy(self.args)
+        if "train" in split_name:  # hack to avoid chunking for train split for few-shot inference (cvpr submission)
+            config.chunk_id = None
 
-        self._load_model(self.device)
-
-        batch_size = 32  # hardcoded for now
+        batch_size = 16  # hardcoded for now
         dataset_args = {
-            "config": self.args,
+            "config": config,
             "dataset_name": self.args.dataset_name,
-            "split": split,
+            "split_name": split_name,
         }
         dataset = VQADataset(**dataset_args)
         dataloader = DataLoader(
@@ -489,18 +520,34 @@ class PromptCapGenerarator(CaptionGenerator):
             pin_memory=True,  # set to True to enable faster data transfer between CPU and GPU
         )
 
+        return dataloader
+
+    def generate_caption(self, prompt_handler: PromptingHandler, split_name: str):
+        output_fname = self.get_output_file_name(split_name)
+        if os.path.exists(output_fname):
+            logger.info(f"Caption data already exists. You can load it from cache {output_fname}")
+            return
+
+        self._load_model(self.device)
+
+        dataloader = self._initialize_dataloader(split_name)
+
         logger.info(
-            f" Generating caption data for {self.args.dataset_name} dataset, {split} split."
+            f" Generating caption data for {self.args.dataset_name} dataset, {split_name} split."
             f" It may take a few minutes depending on your dataset size. Please wait..."
         )
-        logger.info(f" Num examples: \t{len(dataset)}")
-        logger.info(f" Batch size: \t{batch_size}")
-        logger.info(f" Num iterations: \t{len(dataset) // batch_size}")
+        logger.info(f" Num examples: \t{len(dataloader.dataset)}")
+        logger.info(f" Batch size: \t{dataloader.batch_size}")
+        logger.info(f" Num iterations: \t{len(dataloader.dataset) // dataloader.batch_size}")
 
-        output = {}
+        results, cached_ids = self.load_data_from_cache(split_name)
         for batch in tqdm(dataloader, desc="Generating captions"):
+            question_ids = batch["question_id"]
             images = batch["image"]
             questions = batch["question"]
+            # check if all the question_ids are already in cached_ids using all() function
+            if all([qid in cached_ids for qid in question_ids]):
+                continue
 
             prompted_questions = [
                 f"Please describe this image according to the given question: {question}" for question in questions
@@ -517,10 +564,14 @@ class PromptCapGenerarator(CaptionGenerator):
             logger.debug(f"Generated captions: {json.dumps(generated_captions)}")
             assert len(generated_captions) == len(questions)
 
-            for question_id, caption in zip(batch["question_id"], generated_captions):
-                output[question_id] = caption
+            for question_id, caption in zip(question_ids, generated_captions):
+                results[question_id] = caption
 
-        self.save(output, split)
+            if len(results) % 100 == 0:
+                cache_fname = self.get_cache_file_path(split_name)
+                self.save_to_json(results, cache_fname)
+
+        self.save_to_json(results, output_fname)
 
     def generate_standard(self, images: List[Image.Image], questions: List[str]):
         generated_captions = []
@@ -529,6 +580,16 @@ class PromptCapGenerarator(CaptionGenerator):
             output = self.promptcap.caption(prompt, image)
             generated_captions.append(output)
         return generated_captions
+
+    def load_data_from_cache(self, data_split: str):
+        cached_data = {}
+        cache_file_path = self.get_cache_file_path(data_split)
+        if os.path.exists(cache_file_path):
+            with open(cache_file_path, "r") as file:
+                cached_data = json.load(file)
+            logger.info(f"Loaded cached data from {cache_file_path}")
+        cached_ids = set(cached_data.keys())
+        return cached_data, cached_ids
 
 
 class PromptCapGeneratorWinoground(PromptCapGenerarator):
@@ -542,9 +603,9 @@ class PromptCapGeneratorWinoground(PromptCapGenerarator):
         return batch
 
     def generate_caption(self, prompt_handler: PromptingHandler):
-        fname = self.get_file_path(split="test")
-        if os.path.exists(fname):
-            logger.info(f"Caption data already exists. You can load it from cache {fname}")
+        output_fname = self.get_output_file_name(split_name="test")
+        if os.path.exists(output_fname):
+            logger.info(f"Caption data already exists. You can load it from cache {output_fname}")
             return
 
         self._load_model(self.device)
@@ -570,7 +631,8 @@ class PromptCapGeneratorWinoground(PromptCapGenerarator):
                 generated_captions = apply_prompt_to_example_winoground(prompt_handler, caption_example)
 
             output[example["id"]] = generated_captions
-        self.save(output, split="test")
+
+        self.save_to_json(output, output_fname)
 
     def generate_standard(self, images: List[Image.Image], questions: List[str]):
         generated_captions = []

@@ -65,17 +65,19 @@ class FlamingoProcessor:
         return input_ids, attention_mask.bool()
 
 
-from LLaVA.llava.constants import DEFAULT_IM_END_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IMAGE_TOKEN, IMAGE_TOKEN_INDEX
+from LLaVA.llava.constants import (DEFAULT_IM_END_TOKEN,
+                                   DEFAULT_IM_START_TOKEN, DEFAULT_IMAGE_TOKEN,
+                                   IMAGE_TOKEN_INDEX)
 from LLaVA.llava.conversation import conv_templates
-from LLaVA.llava.mm_utils import tokenizer_image_token
+from LLaVA.llava.mm_utils import process_images, tokenizer_image_token
 
 
 class LlaVaProcessor:
-    def __init__(self, tokenizer, image_processor, mm_use_im_start_end):
-        self.mm_use_im_start_end = mm_use_im_start_end
+    def __init__(self, tokenizer, image_processor, model_config):
         self.tokenizer = tokenizer
         self.image_processor = image_processor
         self.conv_mode = "llava_v1"
+        self.model_config = model_config
 
     def load_demo_images(image_files: Union[List[str], str]):
         if type(image_files) is list:
@@ -127,7 +129,7 @@ class LlaVaProcessor:
         return image_tensor, input_ids
 
     def format_text(self, text: str):
-        if self.mm_use_im_start_end:
+        if self.model_config.mm_use_im_start_end:
             text = DEFAULT_IM_START_TOKEN + DEFAULT_IMAGE_TOKEN + DEFAULT_IM_END_TOKEN + "\n" + text
         else:
             text = DEFAULT_IMAGE_TOKEN + "\n" + text
@@ -149,18 +151,21 @@ class LlaVaProcessor:
             return sequence
         return torch.cat([torch.full((max_length - len(sequence),), padding_value, dtype=sequence.dtype), sequence])
 
-    def get_processed_tokens(self, text: str, image_path: str):
+    def get_processed_tokens(self, text: str, image: Union[str, Image.Image]):
         prompt = self.format_text(text)
-        image = self.load_image(image_path)
+        if type(image) is str:
+            image = self.load_image(image)
 
         input_ids = tokenizer_image_token(prompt, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt").unsqueeze(0)
-        image_tensor = self.image_processor.preprocess(image, return_tensors="pt")["pixel_values"][0]
+        image_tensor = self.image_processor([image], return_tensors="pt")["pixel_values"]
 
         return image_tensor, input_ids
 
-    def get_processed_tokens_batch(self, batch_text: List[str], image_paths: List[str]):
+    def get_processed_tokens_batch(self, batch_text: List[str], images: Union[List[str], List[Image.Image]]):
         prompt = [self.format_text(text) for text in batch_text]
-        images = [self.load_image(image_path) for image_path in image_paths]
+        # check if image_paths is a list of images or a list of image paths
+        if type(images[0]) is str:
+            images = [self.load_image(image_path) for image_path in images]
 
         batch_input_ids = [
             tokenizer_image_token(prompt, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt") for prompt in prompt

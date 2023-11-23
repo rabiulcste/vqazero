@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Investigating Prompting Techniques for VQA</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+    <h1>Investigating Prompting Techniques for Zero- and Few-Shot Visual Question Answering</h1>
+    <p>This codebase contains the code for the paper <a href="https://arxiv.org/abs/2306.09996">Investigating Prompting Techniques for Zero- and Few-Shot Visual Question Answering</a>.</p>
+    <img src="docs/images/vqa_prompt_teaser.png" alt="VQA Prompt Teaser" width="850"/>
+</header>
+
+<section id="formats">
+    <h2>VQA Formats</h2>
+    <ul>
+        <li><strong>Standard VQA:</strong> Standard VQA task format.</li>
+        <li><strong>Caption VQA:</strong> Model-generated caption followed by standard VQA format.</li>
+        <li><strong>Chain-of-thought VQA:</strong> Chain-of-thought VQA format.</li>
+    </ul>
+</section>
+
+<section id="templates">
+    <h2>Prompt Templates</h2>
+    <p>We have a list of prompt templates that can be used with different VQA formats. Please check the <code>prompts/templates/{dataset_name}</code> directory for the list of templates.</p>
+    <img src="docs/images/vqa_prompt_templates.png" alt="VQA Prompt Templates" width="850"/>
+</section>
+
+<section id="datasets">
+    <h2>Datasets</h2>
+    <ul>
+        <li><strong>OK-VQA:</strong> Download the dataset from <a href="https://okvqa.allenai.org/">allenai</a> and unzip the files into the <code>dataset/</code> folder.</li>
+        <li><strong>AOK-VQA:</strong> Download the dataset from <a href="https://allenai.org/project/a-okvqa/home">allenai</a> and unzip the files into the <code>dataset/</code> folder.</li>
+        <li><strong>GQA:</strong> Download the dataset from Stanford <a href="https://cs.stanford.edu/people/dorarad/gqa/download.html">website</a> and unzip the files into the <code>dataset/</code> folder.</li>
+        <li><strong>Winoground:</strong> Use the Winoground dataset with the Hugging Face <a href="https://huggingface.co/docs/datasets/index">datasets</a> library.</li>
+        <li><strong>VQAv2:</strong> Download the dataset from <a href="https://visualqa.org/download.html">VQA website</a>.</li>
+    </ul>
+</section>
+
+<section id="usage">
+    <h2>Example Usage</h2>
+    <pre>
+python3 main_v2.py --dataset_name okvqa --model_name blip2_t5_flant5xxl --vqa_format basic_qa --prompt_name prefix_your_task_knowledge_qa_short_answer
+
+python3 main_v2.py --dataset_name okvqa --model_name blip2_t5_flant5xxl --vqa_format caption_qa --prompt_name prefix_your_task_knowledge_qa_short_answer,prefix_promptcap
+
+python3 main_v2.py --dataset_name okvqa --model_name blip2_t5_flant5xxl --vqa_format cot_qa --prompt_name prefix_think_step_by_step_rationale
+    </pre>
+</section>
+
+<section id="results">
+    <h2>Results</h2>
+    <p>We report the baseline and best setting results for various models on different datasets. Please check the paper for more results.</p>
+
+    <h3>OKVQA</h3>
+    <table>
+        <tr>
+            <th></th>
+            <th>BLIP2 Flan-T5</th>
+            <th>BLIP2 OPT</th>
+            <th>Kosmos2</th>
+            <th>OpenFlamingo</th>
+            <th>LLaVA</th>
+        </tr>
+        <tr>
+            <td>Baseline</td>
+            <td>48.48</td>
+            <td>37.39</td>
+            <td>29.94</td>
+            <td>20.51</td>
+            <td>44.84</td>
+        </tr>
+        <tr>
+            <td>Best</td>
+            <td>51.4</td>
+            <td>46.29</td>
+            <td>36.54</td>
+            <td>37.38</td>
+            <td>48.01</td>
+        </tr>
+    </table>
+
+    <h3>AOKVQA</h3>
+    <table>
+        <tr>
+            <th></th>
+            <th>BLIP2 Flan-T5</th>
+            <th>BLIP2 OPT</th>
+            <th>Kosmos2</th>
+            <th>OpenFlamingo</th>
+            <th>LLaVA</th>
+        </tr>
+        <tr>
+            <td>Baseline</td>
+            <td>51.20</td>
+            <td>38.25</td>
+            <td>32.91</td>
+            <td>28.44</td>
+            <td>52.69</td>
+        </tr>
+        <tr>
+            <td>Best</td>
+            <td>54.98</td>
+            <td>49.39</td>
+            <td>38.26</td>
+            <td>39.0</td>
+            <td>52.32</td>
+        </tr>
+    </table>
+
+    <h3>GQA</h3>
+    <table>
+        <tr>
+            <th></th>
+            <th>BLIP2 Flan-T5</th>
+            <th>BLIP2 OPT</th>
+            <th>Kosmos2</th>
+            <th>OpenFlamingo</th>
+            <th>LLaVA</th>
+        </tr>
+        <tr>
+            <td>Baseline</td>
+            <td>44.46</td>
+            <td>28.75</td>
+            <td>32.31</td>
+            <td>28.44</td>
+            <td>38.40</td>
+        </tr>
+        <tr>
+            <td>Best</td>
+            <td>47.57</td>
+            <td>41.99</td>
+            <td>36.17</td>
+            <td>38.04</td>
+            <td>41.00</td>
+        </tr>
+    </table>
+</section>
+
+<footer>
+    <h2>Citation</h2>
+    <pre>
+@article{awal2023investigating,
+  title={Investigating Prompting Techniques for Zero-and Few-Shot Visual Question Answering},
+  author={Awal, Rabiul and Zhang, Le and Agrawal, Aishwarya},
+  journal={arXiv preprint arXiv:2306.09996},
+  year={2023}
+}
+    </pre>
+</footer>
+
+</body>
+</html>

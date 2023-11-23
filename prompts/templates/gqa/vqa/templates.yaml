@@ -78,8 +78,8 @@ templates:
     id: 6379cbd5-f3c5-484f-833a-75e33b863b0b
     jinja: |
       {% if caption -%} {{ caption }} {% endif -%}
-      Q: {{ question }}
-      A: Let's think step by step.
+      Question: {{ question }}
+      Answer: Let's think step by step.
     metadata: !TemplateMetadata
       choices_in_prompt: false
     name: prefix_think_step_by_step_rationale
@@ -147,6 +147,8 @@ templates:
     author: Rabiul Awal
 
 
+
+
   bea5bb48-28c2-4b52-8c90-1ab5cfb3b9d3: !Template
     id: bea5bb48-28c2-4b52-8c90-1ab5cfb3b9d3
     jinja: |
@@ -164,7 +166,7 @@ templates:
   aac913af-4369-488a-8ea4-a905068cb755: !Template
     id: aac913af-4369-488a-8ea4-a905068cb755
     jinja: |
-        {% if caption  %} {{ caption }} {% endif %} Your task is to answer a knowledge based question. Question: {{ question }} {% if choice %} {{ choice }} {% endif %} Answer:
+        {% if caption  %} {{ caption }} {% endif %} Your task is to answer a question that may require compositional reasoning. Question: {{ question }} {% if choice %} {{ choice }} {% endif %} Answer:
     metadata: !TemplateMetadata
       choices_in_prompt: false
     name: prefix_your_task_compositional_qa_answer

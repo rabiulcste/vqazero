@@ -5,34 +5,34 @@ import os
 DATASET_CONFIG = {
     "okvqa": {
         "val": {
-            "question_file": "OpenEnded_mscoco_val2014_questions.json",
-            "annotation_file": "mscoco_val2014_annotations.json",
+            "question_file": "annotations/OpenEnded_mscoco_val2014_questions.json",
+            "annotation_file": "annotations/mscoco_val2014_annotations.json",
             "image_root": "val2014/",
             "image_prefix": "COCO_val2014_",
         },
         "train": {
-            "question_file": "OpenEnded_mscoco_train2014_questions.json",
-            "annotation_file": "mscoco_train2014_annotations.json",
+            "question_file": "annotations/OpenEnded_mscoco_train2014_questions.json",
+            "annotation_file": "annotations/mscoco_train2014_annotations.json",
             "image_root": "train2014/",
             "image_prefix": "COCO_train2014_",
         },
     },
     "vqa_v2": {
         "val": {
-            "question_file": "v2_OpenEnded_mscoco_val2014_questions.json",
-            "annotation_file": "v2_mscoco_val2014_annotations.json",
+            "question_file": "annotations/v2_OpenEnded_mscoco_val2014_questions.json",
+            "annotation_file": "annotations/v2_mscoco_val2014_annotations.json",
             "image_root": "val2014/",
             "image_prefix": "COCO_val2014_",  # COCO_test2015_
         },
         "train": {
-            "question_file": "v2_OpenEnded_mscoco_train2014_questions_small.json",
-            "annotation_file": "v2_mscoco_train2014_annotations.json",
+            "question_file": "annotations/v2_OpenEnded_mscoco_train2014_questions.json",
+            "annotation_file": "annotations/v2_mscoco_train2014_annotations.json",
             "image_root": "train2014/",
             "image_prefix": "COCO_train2014_",
         },
         "train_30k": {
-            "question_file": "v2_OpenEnded_mscoco_train2014_questions_30k.json",
-            "annotation_file": "v2_mscoco_train2014_annotations.json",
+            "question_file": "extras/chunked/v2_OpenEnded_mscoco_train2014_questions_30k.json",
+            "annotation_file": "annotations/v2_mscoco_train2014_annotations.json",
             "image_root": "train2014/",
             "image_prefix": "COCO_train2014_",
         },
@@ -44,13 +44,16 @@ DATASET_CONFIG = {
     "gqa": {
         "testdev_bal": {
             "annotation_file": "testdev_balanced_questions.json",  # this is eval set
-            # "annotation_file": "testdev_small.json",
             "image_root": "/network/projects/aishwarya_lab/datasets/gqa/images/",
             "image_prefix": "gqa",
         },
         "train_bal": {
             "annotation_file": "train_balanced_questions.json",
-            # "annotation_file": "train_balanced_questions_small.json",
+            "image_root": "/network/projects/aishwarya_lab/datasets/gqa/images/",
+            "image_prefix": "gqa",
+        },
+        "train_bal_small": {
+            "annotation_file": "train_balanced_questions_small.json",
             "image_root": "/network/projects/aishwarya_lab/datasets/gqa/images/",
             "image_prefix": "gqa",
         },
@@ -90,7 +93,7 @@ MODEL_CLS_INFO = {
         "vicuna13b": {"name": "lmsys/vicuna-13b-v1.5"},
         "redpajama": {"name": "togethercomputer/RedPajama-INCITE-Base-3B-v1"},
         "redpajama_instruct": {"name": "togethercomputer/RedPajama-INCITE-Instruct-3B-v1"},
-        "kosmos2": {"name": "ydshieh/kosmos-2-patch14-224"},
+        "kosmos2": {"name": "microsoft/kosmos-2-patch14-224"},
         "open_flamingo_redpajama": {
             "vision_encoder_path": "ViT-L-14",
             "name": "openflamingo/OpenFlamingo-4B-vitl-rpj3b",
@@ -110,6 +113,8 @@ MODEL_CLS_INFO = {
             "tokenizer_path": "anas-awadalla/mpt-1b-redpajama-200b",
         },
         "llava": {"name": "liuhaotian/llava-v1-0719-336px-lora-vicuna-13b-v1.3", "base": "lmsys/vicuna-13b-v1.3"},
+        "minigpt4_vicuna_13b": {"name": "/home/mila/r/rabiul.awal/scratch/hub/pretrained_minigpt4.pth"},
+        "minigpt4_llama2_7b": {"name": "/home/mila/r/rabiul.awal/scratch/hub/pretrained_minigpt4_llama2_7b.pth"},
     },
 }
 
@@ -162,7 +167,22 @@ VQA_PROMPT_COLLECTION = {
     "gqa": {"caption": caption_prompts, "question": vqa_prompts + gqa_prompts},
 }
 
+# better transformer supported models
+BETTER_TRANSFORMER_MODELS = [
+    "blip2_t5_flant5xl",
+    "blip2_t5_flant5xxl",
+]
+
 # grid search
 num_beams_grid = [1, 2, 3, 4, 5, 6, 7, 8]
 max_length_grid = [3, 5, 7, 10, 12, 15, 18, 20]
 VQA_GRID_SEARCH = {"num_beams": num_beams_grid, "max_length": max_length_grid}
+
+
+THRESHOLD_MAP = {
+    "gqa": 0.5,
+    "aokvqa": 0.4,
+    "okvqa": 0.5,
+    "visual7w": 0.5,
+    "vqa_v2": 0.5,
+}
