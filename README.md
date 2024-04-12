@@ -61,14 +61,14 @@ Download and unzip the files into the `dataset/` folder for the VQA datasets. Fo
 ### Running the inference code
 To run the Standard VQA, use the following command:
 ```
-python3 main_v2.py --dataset_name okvqa \
+python3 main.py --dataset_name okvqa \
   --model_name blip2_t5_flant5xxl \
   --vqa_format standard_vqa \
   --prompt_name prefix_your_task_knowledge_qa_short_answer
 ``` 
 To run the Caption VQA, use the following command:
 ```
-python3 main_v2.py --dataset_name okvqa \
+python3 main.py --dataset_name okvqa \
   --model_name blip2_t5_flant5xxl \
   --vqa_format caption_vqa \
   --prompt_name prefix_your_task_knowledge_qa_short_answer,prefix_promptcap
@@ -76,7 +76,7 @@ python3 main_v2.py --dataset_name okvqa \
 
 To run the Chain-of-thought VQA, use the following command:
 ```
-python3 main_v2.py --dataset_name okvqa \
+python3 main.py --dataset_name okvqa \
   --model_name blip2_t5_flant5xxl \
   --vqa_format cot_vqa \
   --prompt_name prefix_think_step_by_step_rationale
@@ -85,7 +85,7 @@ python3 main_v2.py --dataset_name okvqa \
 ### Running few-shot inference
 Please prepare examplar dataset `dataset_zoo/nearest_neighbor.py` and run the following command:
 ```
-python3 main_v2.py \
+python3 main.py \
   --dataset_name okvqa \
   --model_name blip2_t5_flant5xxl \
   --vqa_format standard_vqa \
@@ -97,7 +97,7 @@ python3 main_v2.py \
 Considering the constraints of VQA accuracy metrics in the context of open-ended answer generation, we offer utility scripts in `evals/vicuna_llm_evals.py`. Using [Vicuna LLM](https://lmsys.org/blog/2023-03-30-vicuna/), these scripts process generated answers to align with reference responses and subsequently evaluate them based on the conventional VQA metric.
  
 ```
-python3 main_v2.py \
+python3 main.py \
   --dataset_name okvqa \
   --model_name blip2_t5_flant5xxl \
   --vqa_format standard_vqa \
