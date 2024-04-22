@@ -68,7 +68,7 @@ class CaptionGenerator:
     def _load_llm_engine(self):
         # check https://vllm.readthedocs.io/en/latest/models/supported_models.html#supported-models for supported models
         model_path = "Open-Orca/Mistral-7B-OpenOrca"
-        demonstrations_fname = os.path.join(PROJECT_DIR, "vqa_bootstrap", "demonstrations", "dense_captioning.json")
+        demonstrations_fname = os.path.join(PROJECT_DIR, "evals", "demonstrations", "dense_captioning.json")
         llm = LlmEngine(model_path, self.device, fname=demonstrations_fname)
         llm.load_pretrained_model_tokenizer()
         llm._load_in_context_examples()

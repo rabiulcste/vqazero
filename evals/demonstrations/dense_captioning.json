@@ -1,0 +1,57 @@
+{
+    "io_structure": {
+        "input_keys": "Input",
+        "output_keys": "Output"
+    },
+    "task_description": "Given a set of descriptive captions that describe a scene or image, your task is to synthesize a concise, informative caption that captures the key details and actions in the scene. Your generated caption should provide a clear and coherent description of what is happening in the image. Make sure to include relevant objects, actions, and locations mentioned in the input captions while ensuring that the resulting caption is concise and coherent.",
+    "samples": [
+        {
+            "Input": "A man stands on a street with luggage. A man is standing in the street with two suitcases and a handbag. A man standing in the street with his suitcase. A man standing on a street with luggage. A man with suitcases standing in a middle of the road.",
+            "Output": "A man is standing in the middle of the street with two suitcases and a handbag."
+        },
+        {
+            "Input": "A man posing for a picture at a computer station. A man is standing in the office. A man holding a plate of pizza in front of his computer. A man is pointing his finger at a pizza plate sitting on a keyboard. A man is eating a pizza while another man is standing next to a computer.",
+            "Output": "A man is posing at a computer station with a plate of pizza on the keyboard, pointing at it, while another man stands nearby in the office."
+        },        
+        {
+            "Input": "A herd of sheep is grazing in a desert. A large herd of sheep in the desert. A tractor driving past sheep in the field. A herd of sheep are being led by a tractor. A herd of sheep are walking across a dry area with a tractor driving.",
+            "Output": "A large herd of sheep is grazing in the desert. A tractor is driving past them in the same area."
+        },        
+        {
+            "Input": "The blue and white airbus sits at an airport. A large blue and white airplane sitting parked at an airport. A passenger airliner is on the runway at an airport. An airplane is parked on the tarmac. A large plane parked in the airport with cargo trucks on the tarmac.",
+            "Output": "A large blue and white passenger airliner is parked on the tarmac at the airport with cargo trucks nearby."
+        },                    
+        {
+            "Input": "Three children with teddy bears playing outside. Four girls are outside playing in the grass. Three kids playing with teddy bears in the grass. Three girls with a stuffed animal are playing outdoors. Three kids holding a stuffed teddy bear.",
+            "Output": "Three to four children, including at least three girls, are playing outside in the grass, holding and interacting with teddy bears."
+        },        
+        {
+            "Input": "Man on bicycle carrying a full basket of flowers. A man on a bike with a load of flowers on it. The person is delivering flowers. Man with flower bike on the street. A man on a bike is selling flowers.",
+            "Output": "A man on a bicycle is on the street with a full basket of flowers, possibly delivering or selling them."
+        },                
+        {
+            "Input": "A cowboy is riding his horse. A man on a horse with two cows behind him. A horse and herd of cows on the road. Two men riding horses. A cowboy on his horse standing next to some cattle.",
+            "Output": "Two men, including at least one cowboy, are riding their horses with a herd of cattle, possibly cows, nearby on the road."
+        },
+        {
+            "Input": "An outdoor table and chairs with a chiffon umbrella. An outdoor area with tables and umbrellas. A patio area in a city with chairs and tables in it. An outdoor table with many umbrellas and chairs. There are many chairs with tables on the brick paver.",
+            "Output": "An outdoor patio area in a city has many tables and chairs set up on brick pavers, shaded by multiple umbrellas, including one made of chiffon."
+        },        
+        {
+            "Input": "A bathroom sink is next to a mirror. A bathroom with a mirror above a sink. A bathroom with a sink, mirror and toilet. A bathroom with a mirror in front of it. A bathroom with sink, mirror and towels.",
+            "Output": "A bathroom features a sink with a mirror above it, towels, and a toilet."
+        },        
+        {
+            "Input": "A person skateboarding down a street. A man skateboarding down a street. A man on a skateboard crosses the street in front of a white parked car. A man is crossing a street while skateboarding. A man is skateboarding in the street.",
+            "Output": "A man is skateboarding down a street, crossing in front of a white parked car."
+        },
+        {
+            "Input": "Two men fixing each other's ties. A man is standing outside fixing a man's tie. A man adjusts another man's tie. A man is adjusting a man's tie. A man is adjusting another man's tie in the front yard.",
+            "Output": "Outside, possibly in a front yard, one man is adjusting another man's tie."
+        },
+        {
+            "Input": "A young boy is standing with a racket on a tennis court. A child in a black t-shirt on a tennis court. A young boy is playing tennis with a racket and a ball. A young boy is holding a tennis racket ready to hit a tennis ball. A young boy is on a tennis court with a tennis racket.",
+            "Output": "A young boy in a black t-shirt is on a tennis court, holding a racket and ready to play or hit a tennis ball."
+        }     
+    ]
+}
