@@ -5,7 +5,7 @@
 
 <a href='https://rabiul.me/vqazero/'><img src='https://img.shields.io/badge/Project-Page-Green'></a>  <a href='https://arxiv.org/abs/2306.09996'><img src='https://img.shields.io/badge/Paper-Arxiv-red'></a>
 
-<img src="docs/vqa_prompt_teaser.png" alt="VQA Prompt Teaser" width="500"/>
+<img src="docs/images/vqa_prompt_teaser.png" alt="VQA Prompt Teaser" width="500"/>
 
 ## Table of Contents
 - [Installation](#installation)
@@ -45,7 +45,7 @@ We supports the following VQA formats:
 ### Prompt Templates
 We have a list of prompt templates that can be used with different VQA formats. Please check the `prompts/templates/{dataset_name}`.
 
-<img src="docs/vqa_prompt_templates.png" alt="VQA Prompt Templates" width="500"/>
+<img src="docs/images/vqa_prompt_templates.png" alt="VQA Prompt Templates" width="500"/>
 
 
 ## Datasets
