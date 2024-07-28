@@ -1,0 +1,303 @@
+@import "fonts.css";
+@import url('https://fonts.googleapis.com/css2?family=Prompt:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300..700&display=swap');
+
+
+body {
+  font-family: 'Libre Baskerville', 'Noto Sans', sans-serif;
+}
+
+
+.footer .icon-link {
+    font-size: 25px;
+    color: #000;
+}
+
+.link-block a {
+    margin-top: 5px;
+    margin-bottom: 5px;
+}
+
+.dnerf {
+  font-variant: small-caps;
+}
+
+
+.teaser .hero-body {
+  padding-top: 0;
+  padding-bottom: 3rem;
+}
+
+.teaser {
+  font-family: 'Google Sans', sans-serif;
+}
+
+
+.publication-title {
+}
+
+.publication-banner {
+  max-height: parent;
+
+}
+
+.publication-banner video {
+  position: relative;
+  left: auto;
+  top: auto;
+  transform: none;
+  object-fit: fit;
+}
+
+.publication-header .hero-body {
+}
+
+.publication-title {
+    font-family: 'Google Sans', sans-serif;
+}
+
+.publication-authors {
+    font-family: 'Google Sans', sans-serif;
+}
+
+.publication-venue {
+    color: #555;
+    width: fit-content;
+    font-weight: bold;
+}
+
+.publication-awards {
+    color: #ff3860;
+    width: fit-content;
+    font-weight: bolder;
+}
+
+.publication-authors {
+}
+
+.publication-authors a {
+   color: hsl(204, 86%, 53%) !important;
+}
+
+.publication-authors a:hover {
+    text-decoration: underline;
+}
+
+.author-block {
+  display: inline-block;
+}
+
+.publication-banner img {
+}
+
+.publication-authors {
+  /*color: #4286f4;*/
+}
+
+.publication-video {
+    position: relative;
+    width: 100%;
+    height: 0;
+    padding-bottom: 56.25%;
+
+    overflow: hidden;
+    border-radius: 10px !important;
+}
+
+.publication-video iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.publication-body img {
+}
+
+.results-carousel {
+  overflow: hidden;
+}
+
+.results-carousel .item {
+  margin: 5px;
+  overflow: hidden;
+  padding: 20px;
+  font-size: 0;
+}
+
+.results-carousel video {
+  margin: 0;
+}
+
+.slider-pagination .slider-page {
+  background: #000000;
+}
+
+.eql-cntrb { 
+  font-size: smaller;
+}
+
+.is-featured {
+  background-color: #550B5A; /* Light grey, for example, or any color you prefer */
+  color: white; /* Adjust text color to ensure good contrast */
+}
+
+
+/* ======================== Table ===================== */
+.table-wrapper {
+  overflow: scroll;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+}
+
+.table-wrapper::-webkit-scrollbar { /* WebKit */
+  width: 0;
+  height: 0;
+}
+
+table {
+  margin: 0.5vh 0;
+  width: 100%;
+  font-family: 'Libre Baskerville', sans-serif;
+  border-collapse: collapse; /* Ensures borders are collapsed */
+}
+
+table a {
+  font-size: inherit;
+}
+
+table th, table td {
+  font-size: 85%;
+  padding: 0.5em 0.5em;
+  color: #353535;
+  border: 1px solid #404041; /* Adds borders between cells */
+}
+
+table th b, table td b {
+  font-weight: 800;
+}
+
+table thead {
+  font-family: "Prompt", sans-serif;
+  font-weight: 600;
+}
+
+table tbody tr {
+  font-family: "Prompt", sans-serif;
+}
+
+table tbody tr:nth-child(2n+1) {
+  background-color: #ececec;
+}
+
+table tbody tr td.gray {
+  background-color: #ececec !important;
+}
+
+table tbody tr td.nogray {
+  background-color: #f6f6f6 !important;
+}
+
+.table-wrapper .center th, .table-wrapper .center td {
+  text-align: center;
+}
+
+table.alt {
+  border-collapse: separate;
+}
+
+table.alt tbody tr td {
+  border: solid 1px white;
+  border-left-width: 0;
+  border-top-width: 0;
+}
+
+table.alt tbody tr td:first-child {
+  border-left-width: 1px;
+}
+
+table.alt tbody tr:first-child td {
+  border-top-width: 1px;
+}
+
+table.alt thead {
+  border-bottom: 0;
+}
+
+table.alt tfoot {
+  border-top: 0;
+}
+
+table th:empty {
+  border: none;
+}
+
+.highlight {
+  background-color: #e3fbf4; /* Light green background to highlight best results */
+  font-weight: bold;
+}
+
+.family-header {
+  background-color: #d1e7f0; /* Slightly darker to indicate new family */
+  font-size: larger;
+  padding-top: 10px;
+  border-top: 2px solid #aaa;
+  border-bottom: 2px solid #aaa;
+}
+
+/* ======================== Code ===================== */
+code {
+  background-color: rgba(230, 235, 237, 0.25);
+  border-radius: 10px;
+  border: solid 1px #c6c6c6;
+  font-family: "Fira Code", monospace;
+  margin: 0 0.25em;
+  padding: 0.25em 0.65em;
+  color: #666667;
+  font-size: 75%;
+}
+
+pre {
+  font-family: "Fira Code", monospace;
+  background-color: inherit;
+  margin: 0 !important; /* Remove margin */
+  padding: 0 !important; /* Remove padding */
+  overflow-x: auto;
+}
+
+
+pre code {
+  background-color: #fafafa !important;
+  display: block;
+  padding: 0; /* Remove padding */
+  overflow-x: auto;
+}
+
+
+/* Style for unordered list */
+ul {
+  list-style-type: none; /* Remove default bullet style */
+  margin: 0; /* Remove default margin */
+  padding: 0; /* Remove default padding */
+}
+
+li {
+  margin-bottom: 8px; /* Add space between list items */
+  position: relative; /* Position relative for custom bullet */
+  padding-left: 20px; /* Add padding for custom bullet */
+}
+
+li::before {
+  position: absolute; /* Position bullet absolutely */
+  left: 0; /* Align bullet to the left */
+}
+
+/* Style for nested unordered lists */
+ul ul {
+  margin-left: 20px; /* Indent nested lists */
+}
+
+ul ul li::before {
+  content: '◦'; /* Custom bullet for nested list */
+}
