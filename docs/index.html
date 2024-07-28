@@ -1,156 +1,341 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Investigating Prompting Techniques for VQA</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="utf-8">
+  <!-- Meta tags for social media banners, these should be filled in appropriatly as they are your "business card" -->
+  <!-- Replace the content tag with appropriate information -->
+  <meta name="description" content="DESCRIPTION META TAG">
+  <meta property="og:title" content="Investigating Prompting Techniques for Zero- and Few-Shot Visual Question Answering"/>
+  <meta property="og:description" content="In this paper, we explore effective prompting techniques to enhance zero- and few-shot Visual Question Answering (VQA) performance in contemporary Vision-Language Models (VLMs)."/>
+  <meta property="og:url" content="https://rabiul.me/vqazero/"/>
+  <!-- Path to banner image, should be in the path listed below. Optimal dimenssions are 1200X630-->
+  <meta property="og:image" content="static/image/your_banner_image.png" />
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+
+
+  <meta name="twitter:title" content="TWITTER BANNER TITLE META TAG">
+  <meta name="twitter:description" content="TWITTER BANNER DESCRIPTION META TAG">
+  <!-- Path to banner image, should be in the path listed below. Optimal dimenssions are 1200X600-->
+  <meta name="twitter:image" content="https://pbs.twimg.com/profile_images/1793859609016369152/h54GTZ4T_400x400.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <!-- Keywords for your paper to be indexed by-->
+  <meta name="keywords" content="vision language models, multimodal understanding, fine-grained understanding, compositionality, gpt4 vision">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+
+  <title>vqa-zero</title>
+  <link rel="icon" type="image/x-icon" href="https://mila.quebec/sites/default/themes/mila_v1/favicon.ico">
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro"
+  rel="stylesheet">
+
+  <link rel="stylesheet" href="static/css/bulma.min.css">
+  <link rel="stylesheet" href="static/css/bulma-carousel.min.css">
+  <link rel="stylesheet" href="static/css/bulma-slider.min.css">
+  <link rel="stylesheet" href="static/css/fontawesome.all.min.css">
+  <link rel="stylesheet"
+  href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  <link rel="stylesheet" href="static/css/index.css">
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script src="https://documentcloud.adobe.com/view-sdk/main.js"></script>
+  <script defer src="static/js/fontawesome.all.min.js"></script>
+  <script src="static/js/bulma-carousel.min.js"></script>
+  <script src="static/js/bulma-slider.min.js"></script>
+  <script src="static/js/index.js"></script>
 </head>
 <body>
 
-<header>
-    <h1>Investigating Prompting Techniques for Zero- and Few-Shot Visual Question Answering</h1>
-    <p>This codebase contains the code for the paper <a href="https://arxiv.org/abs/2306.09996">Investigating Prompting Techniques for Zero- and Few-Shot Visual Question Answering</a>.</p>
-    <img src="docs/images/vqa_prompt_teaser.png" alt="VQA Prompt Teaser" width="850"/>
-</header>
 
-<section id="formats">
-    <h2>VQA Formats</h2>
-    <ul>
-        <li><strong>Standard VQA:</strong> Standard VQA task format.</li>
-        <li><strong>Caption VQA:</strong> Model-generated caption followed by standard VQA format.</li>
-        <li><strong>Chain-of-thought VQA:</strong> Chain-of-thought VQA format.</li>
-    </ul>
+  <section class="hero">
+    <div class="hero-body">
+      <div class="container is-max-desktop">
+        <div class="columns is-centered">
+          <div class="column has-text-centered">
+            <h1 class="title is-1 publication-title">Investigating Prompting Techniques for Zero- and Few-Shot Visual Question Answering</h1>
+            <div class="is-size-5 publication-authors">
+              <!-- Paper authors -->
+              <span class="author-block">
+                <a href="https://rabiul.me/" target="_blank">Rabiul Awal</a></span> &nbsp;
+                  <span class="author-block">
+                    <a href="https://zhangle.netlify.app/" target="_blank">Le Zhang</a></span> &nbsp;
+                  <span class="author-block">
+                    <a href="https://www.iro.umontreal.ca/~agrawal/" target="_blank">Aishwarya Agrawal</a>
+                  </span>
+                  </div>
+
+                  <div class="is-size-5 publication-authors">
+                    <span class="author-block">Mila - Quebec AI Institute &ensp; University of Montreal</span>
+                  </div>
+
+                  <div class="column has-text-centered">
+                    <div class="publication-links">
+                    <!-- Arxiv PDF link -->
+                    <span class="link-block">
+                        <a href="https://arxiv.org/pdf/2306.09996" target="_blank"
+                        class="external-link button is-normal is-rounded is-dark">
+                        <span class="icon">
+                          <i class="fas fa-file-pdf"></i>
+                        </span>
+                        <span>Paper</span>
+                      </a>
+                    </span>
+
+
+                  <!-- Github link -->
+                  <span class="link-block">
+                      <a href="https://github.com/rabiulcste/vqazero" target="_blank"
+                      class="external-link button is-normal is-rounded is-dark">
+                      <span class="icon">
+                        <i class="fab fa-github"></i>
+                      </span>
+                      <span>Code</span>
+                    </a>
+                  </span>
+
+
+
+                  <!-- ArXiv abstract Link -->
+                  <span class="link-block">
+                    <a href="https://arxiv.org/abs/2306.09996" target="_blank"
+                      class="external-link button is-normal is-rounded is-dark">
+                      <span class="icon">
+                        <i class="ai ai-arxiv"></i>
+                      </span>
+                      <span>arXiv</span>
+                    </a>
+                  </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </section>
 
-<section id="templates">
-    <h2>Prompt Templates</h2>
-    <p>We have a list of prompt templates that can be used with different VQA formats. Please check the <code>prompts/templates/{dataset_name}</code> directory for the list of templates.</p>
-    <img src="docs/images/vqa_prompt_templates.png" alt="VQA Prompt Templates" width="850"/>
+
+<!-- Teaser video-->
+<section class="hero teaser">
+  <div class="container is-max-desktop">
+    <div class="hero-body">
+      <img src="images/vqa_prompt_teaser.png" id="tree" alt="Your image description" style="width:50%; height:50%; display: block; margin: auto;">
+      <h2 class="subtitle has-text-centered">
+        Overview of prompting techniques explored with various VLMs, encompassing Standard, Caption, Chain-of-thought VQA and Text-only Few-shot, and the use of LLM-guided pre-processing.
+    </h2>
+    </div>
+  </div>
+</section>
+<!-- End teaser video -->
+
+
+
+<!-- Highlights -->
+<section class="section">
+    <div class="container is-max-desktop">
+      <h2 class="title is-3">✨ Highlights ✨</h2>
+      <p><strong>🔍 Prompting Techniques:</strong> Explores zero- and few-shot VQA with models like BLIP2 and Kosmos2.</p>
+      <p><strong>🔄 VQA Formats:</strong> Includes Standard, Caption, and Chain-of-Thought to refine model responses.</p>
+      <p><strong>📊 Performance Boost:</strong> Demonstrates substantial improvements in VQA accuracy across benchmarks.</p>
+      <p><strong>🔧 Key Models:</strong> BLIP2 Flan-T5 excels, with Kosmos2 and LLaVa showing variable gains.</p>
+      <p><strong>📈 Results Summary:</strong></p>
+      <ul>
+        <li>Marked accuracy enhancements using advanced prompting strategies.</li>
+        <li>Highlights strengths and limitations of different VQA models.</li>
+      </ul>
+      <p><strong>📚 Built On:</strong> Leverages transformers and LLaVa, enriching the toolkit for advanced VQA research.</p>
+    </div>
+  </section>
+  <!-- End of Highlights -->
+
+
+<!-- Paper abstract -->
+<section class="section hero is-light">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">Abstract</h2>
+        <div class="content has-text-justified">
+          <p>
+            In this paper, we explore effective prompting techniques to enhance zero- and few-shot Visual Question Answering (VQA) performance in contemporary Vision-Language Models (VLMs). Central to our investigation is the role of question templates in guiding VLMs to generate accurate answers. We identify that specific templates significantly influence VQA outcomes, underscoring the need for strategic template selection. Another pivotal aspect of our study is augmenting VLMs with image captions, providing them with additional visual cues alongside direct image features in VQA tasks. Surprisingly, this augmentation significantly improves the VLMs' performance in many cases, even though VLMs ``see'' the image directly! We explore chain-of-thought (CoT) reasoning and find that while standard CoT reasoning causes drops in performance, advanced methods like self-consistency can help recover it.  Furthermore, we find that text-only few-shot examples enhance VLMs' alignment with the task format, particularly benefiting models prone to verbose zero-shot answers.  Lastly, to mitigate the challenges associated with evaluating free-form open-ended VQA responses using string-matching based VQA metrics, we introduce a straightforward LLM-guided pre-processing technique to adapt the model responses to the expected ground-truth answer distribution. In summary, our research sheds light on the intricacies of prompting strategies in VLMs for VQA, emphasizing the synergistic use of captions, templates, and pre-processing to enhance model efficacy.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- End paper abstract -->
+
+
+
+
+<!-- Image random -->
+
+<!-- <div class="hero-body">
+  <div class="container is-max-desktop">
+    <h2 class="title is-3">Random Image from VisMin</h2>
+    <p>The VisMin dataset consists of four categories of minimal changes: object, attribute, count, and spatial relation. Below is a randomly sampled image from this dataset.</p>
+  </div>
+  <div class="container">
+    <img src="static/images/VisMin-Random.svg" id="tree" alt="Your image description" style="width:100%; height:auto;">
+  </div>
+</div> -->
+<!-- End image random -->
+
+
+
+<!-- Approach -->
+<section class="section is-small is-light">
+    <div class="container is-max-desktop">
+      <h2 class="title is-3">Approach</h2>
+  
+      <p>
+        We explore fine-tuning-free prompting techniques applied to vision-language models, specifically state-of-the-art BLIP2, Kosmos2, OpenFlamingo, and multimodal instruction-tuned LLaVa. We mainly focus on the following prompting approaches:
+      </p>
+      <ul>
+        <li>Zero- and few-shot prompt templates (commonly explored in NLP).</li>
+        <li>Chain-of-thought reasoning for VQA.</li>
+        <li>A two-step VQA method, proposing captioning as additional visual context for VLMs.</li>
+      </ul>
+      <p>
+        Existing vision-language models (VLMs) already show good zero-shot VQA performance. Our prompting techniques (especially captioning in few-shot VQA) lead to a substantial performance increase across benchmarks. However, though instruction-tuned models are claimed to show strong reasoning abilities, our tests found these reasoning abilities, particularly the chain-of-thought, to be deficient in diverse benchmarks. We hope our work will inspire future research in this direction.
+      </p>
+    </div>
 </section>
 
-<section id="datasets">
-    <h2>Datasets</h2>
-    <ul>
-        <li><strong>OK-VQA:</strong> Download the dataset from <a href="https://okvqa.allenai.org/">allenai</a> and unzip the files into the <code>dataset/</code> folder.</li>
-        <li><strong>AOK-VQA:</strong> Download the dataset from <a href="https://allenai.org/project/a-okvqa/home">allenai</a> and unzip the files into the <code>dataset/</code> folder.</li>
-        <li><strong>GQA:</strong> Download the dataset from Stanford <a href="https://cs.stanford.edu/people/dorarad/gqa/download.html">website</a> and unzip the files into the <code>dataset/</code> folder.</li>
-        <li><strong>Winoground:</strong> Use the Winoground dataset with the Hugging Face <a href="https://huggingface.co/docs/datasets/index">datasets</a> library.</li>
-        <li><strong>VQAv2:</strong> Download the dataset from <a href="https://visualqa.org/download.html">VQA website</a>.</li>
-    </ul>
+<!-- End Approach -->
+
+<!-- Results -->
+<section class="section is-small is-light">
+    <div class="container is-max-desktop">
+        <h2 class="title is-3">Results</h2>
+        <p>We report the baseline and best setting results. Please check the paper for more results.</p>
+        <!-- Add the image table here -->
+        <figure class="image">
+            <img src="/images/experiments_result.png" alt="Experiments Result">
+        </figure>
+    </div>
+
+    <div class="container is-max-desktop mt-6 mb-5">
+        <h3 class="title is-4">Additional Findings</h3>
+    </div>
+
+    <div class="container">
+        <figure class="image mb-5">
+            <img src="/images/template_sensitivity_plot.png" alt="Scaling with VisMin data">
+        </figure>
+    </div>
+  
+    <div class="container is-max-desktop">
+        <p>📊 Comparison of zero-shot VQA performance across datasets using different templates in the standard setting. All tested models exhibit sensitivity to template variations, as demonstrated by the varying performance improvements over the baseline ‘Null’ template. 📈</p>
+    </div>
 </section>
 
-<section id="usage">
-    <h2>Example Usage</h2>
-    <pre>
-python3 main_v2.py --dataset_name okvqa --model_name blip2_t5_flant5xxl --vqa_format basic_qa --prompt_name prefix_your_task_knowledge_qa_short_answer
+<!-- End Results -->
 
-python3 main_v2.py --dataset_name okvqa --model_name blip2_t5_flant5xxl --vqa_format caption_qa --prompt_name prefix_your_task_knowledge_qa_short_answer,prefix_promptcap
 
-python3 main_v2.py --dataset_name okvqa --model_name blip2_t5_flant5xxl --vqa_format cot_qa --prompt_name prefix_think_step_by_step_rationale
-    </pre>
+<!-- Youtube video -->
+
+<!-- End youtube video -->
+
+
+<!-- Previous Work Section -->
+<section class="section hero is-featured">
+  <div class="container is-max-desktop">
+    <h2 class="title is-3" style="color: white;">
+      Our Relevant Work at CVPR2024
+    </h2>
+    
+    <div class="columns">
+      <div class="column is-one-quarter-desktop is-full-mobile">
+     
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <figure class="image" style="margin: 0;">
+            <img src="static/images/cvpr-navbar-logo.svg" alt="CVPR2024 Logo" style="height: 3em; object-fit: contain;">
+          </figure>
+          <figure class="image" style="margin: 0;">
+            <img src="static/images/milalogowebblancrgb.png" alt="Mila Logo" style="height: 3em; object-fit: contain;">
+          </figure>
+        </div>
+        <figure class="image">
+          <img src="static/images/le_intra_cross_cvpr2024.png" alt="Key figure from previous research" style="height: auto; max-height: 240px;">
+        </figure>
+        <!-- Button links directly below image -->
+        <div class="buttons has-addons mt-2 mb-3"> <!-- Adjust margin top and bottom -->
+          <a href="https://arxiv.org/abs/2306.08832" target="_blank" class="button is-small is-link">ArXiv</a>
+          <a href="https://github.com/lezhang7/Enhance-FineGrained" target="_blank" class="button is-small is-info">GitHub</a>
+        </div>
+      </div>
+      <div class="column is-three-quarters-desktop is-full-mobile">
+        <h3 class="title is-4">
+          <a href="https://arxiv.org/abs/2306.08832" target="_blank" style="color: white; text-decoration: none;">
+            Contrasting Intra-modal and Ranking Cross-modal Hard Negatives to Enhance Visio-linguistic Compositional Understanding
+          </a>
+        </h3>
+        <div class="is-size-5 publication-authors">
+          <!-- Paper authors -->
+          <span class="author-block">
+            <a href="https://zhangle.netlify.app/" target="_blank">Le Zhang</a>,
+          </span>
+          <span class="author-block">
+            <a href="https://rabiul.me/" target="_blank">Rabiul Awal</a>,
+          </span>
+          <span class="author-block">
+            <a href="https://www.iro.umontreal.ca/~agrawal/" target="_blank">Aishwarya Agrawal</a>
+          </span>
+        </div>
+        <p class="content has-text-justified">
+          Our current findings build upon our previous work, focusing on addressing the gaps in compositional reasoning by enhancing the alignment between images and captions. This research was pivotal in shaping the methodologies employed in our current project.
+        </p>
+      </div>
+    </div>
+  </div>
 </section>
+<!-- End of Previous Work Section -->
 
-<section id="results">
-    <h2>Results</h2>
-    <p>We report the baseline and best setting results for various models on different datasets. Please check the paper for more results.</p>
 
-    <h3>OKVQA</h3>
-    <table>
-        <tr>
-            <th></th>
-            <th>BLIP2 Flan-T5</th>
-            <th>BLIP2 OPT</th>
-            <th>Kosmos2</th>
-            <th>OpenFlamingo</th>
-            <th>LLaVA</th>
-        </tr>
-        <tr>
-            <td>Baseline</td>
-            <td>48.48</td>
-            <td>37.39</td>
-            <td>29.94</td>
-            <td>20.51</td>
-            <td>44.84</td>
-        </tr>
-        <tr>
-            <td>Best</td>
-            <td>51.4</td>
-            <td>46.29</td>
-            <td>36.54</td>
-            <td>37.38</td>
-            <td>48.01</td>
-        </tr>
-    </table>
 
-    <h3>AOKVQA</h3>
-    <table>
-        <tr>
-            <th></th>
-            <th>BLIP2 Flan-T5</th>
-            <th>BLIP2 OPT</th>
-            <th>Kosmos2</th>
-            <th>OpenFlamingo</th>
-            <th>LLaVA</th>
-        </tr>
-        <tr>
-            <td>Baseline</td>
-            <td>51.20</td>
-            <td>38.25</td>
-            <td>32.91</td>
-            <td>28.44</td>
-            <td>52.69</td>
-        </tr>
-        <tr>
-            <td>Best</td>
-            <td>54.98</td>
-            <td>49.39</td>
-            <td>38.26</td>
-            <td>39.0</td>
-            <td>52.32</td>
-        </tr>
-    </table>
-
-    <h3>GQA</h3>
-    <table>
-        <tr>
-            <th></th>
-            <th>BLIP2 Flan-T5</th>
-            <th>BLIP2 OPT</th>
-            <th>Kosmos2</th>
-            <th>OpenFlamingo</th>
-            <th>LLaVA</th>
-        </tr>
-        <tr>
-            <td>Baseline</td>
-            <td>44.46</td>
-            <td>28.75</td>
-            <td>32.31</td>
-            <td>28.44</td>
-            <td>38.40</td>
-        </tr>
-        <tr>
-            <td>Best</td>
-            <td>47.57</td>
-            <td>41.99</td>
-            <td>36.17</td>
-            <td>38.04</td>
-            <td>41.00</td>
-        </tr>
-    </table>
+<!-- BibTeX citation -->
+<section class="section">
+  <div class="container is-max-desktop content">
+    <h2 class="title is-3">Citation</h2>
+    <p>If you found this work useful in your own research, please consider citing the following:</p>
+      <pre><code>
+        @article{awal2023investigating,
+            title={Investigating Prompting Techniques for Zero-and Few-Shot Visual Question Answering},
+            author={Awal, Rabiul and Zhang, Le and Agrawal, Aishwarya},
+            journal={arXiv preprint arXiv:2306.09996},
+            year={2023}
+          }
+      </code></pre>
+  </div>
 </section>
+<!-- End BibTeX citation -->
 
-<footer>
-    <h2>Citation</h2>
-    <pre>
-@article{awal2023investigating,
-  title={Investigating Prompting Techniques for Zero-and Few-Shot Visual Question Answering},
-  author={Awal, Rabiul and Zhang, Le and Agrawal, Aishwarya},
-  journal={arXiv preprint arXiv:2306.09996},
-  year={2023}
-}
-    </pre>
+
+
+  <footer class="footer">
+  <div class="container">
+    <div class="columns is-centered">
+      <div class="column is-8">
+        <div class="content">
+
+          <p>
+            This page was built using the <a href="https://github.com/eliahuhorwitz/Academic-project-page-template" target="_blank">Academic Project Page Template</a> which was adopted from the <a href="https://nerfies.github.io" target="_blank">Nerfies</a> project page.
+            You are free to borrow the of this website, we just ask that you link back to this page in the footer. <br> This website is licensed under a <a rel="license"  href="http://creativecommons.org/licenses/by-sa/4.0/" target="_blank">Creative
+            Commons Attribution-ShareAlike 4.0 International License</a>.
+          </p>
+
+        </div>
+      </div>
+    </div>
+  </div>
 </footer>
 
-</body>
-</html>
+<!-- Statcounter tracking code -->
+  
+<!-- You can add a tracker to track page visits by creating an account at statcounter.com -->
+
+    <!-- End of Statcounter Code -->
+
+  </body>
+  </html>
