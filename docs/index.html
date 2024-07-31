@@ -47,6 +47,44 @@
 <body>
 
 
+<!-- Navbar -->
+<nav class="navbar" role="navigation" aria-label="main navigation">
+  <div class="navbar-brand">
+    <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" id="navbarBurger">
+      <span aria-hidden="true"></span>
+      <span aria-hidden="true"></span>
+      <span aria-hidden="true"></span>
+    </a>
+  </div>
+  <div class="navbar-menu" id="navbarMenu">
+    <div class="navbar-start" style="flex-grow: 1; justify-content: center;">
+      <a class="navbar-item" href="https://rabiul.me">
+        <span class="icon">
+          <i class="fas fa-home"></i>
+        </span>
+      </a>
+  
+      <div class="navbar-item has-dropdown is-hoverable">
+        <a class="navbar-link">
+          More Research
+        </a>
+        <div class="navbar-dropdown">
+          <a class="navbar-item" href="https://culturalvqa.org/">
+            CulturalVQA
+          </a>
+          <a class="navbar-item" href="https://github.com/lezhang7/Enhance-FineGrained">
+            CE-CLIP
+          </a>
+          <a class="navbar-item" href="https://vismin.net/">
+            VisMin
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav>
+<!-- End Navbar -->
+
   <section class="hero">
     <div class="hero-body">
       <div class="container is-max-desktop">
@@ -250,14 +288,14 @@
      
         <div style="display: flex; align-items: center; justify-content: space-between;">
           <figure class="image" style="margin: 0;">
-            <img src="static/images/cvpr-navbar-logo.svg" alt="CVPR2024 Logo" style="height: 3em; object-fit: contain;">
+            <img src="images/cvpr-navbar-logo.svg" alt="CVPR2024 Logo" style="height: 2.5em; width: auto; object-fit: contain;">
           </figure>
           <figure class="image" style="margin: 0;">
-            <img src="static/images/milalogowebblancrgb.png" alt="Mila Logo" style="height: 3em; object-fit: contain;">
+            <img src="images/milalogowebblancrgb.png" alt="Mila Logo" style="height: 1.5em; width: auto; object-fit: contain;">
           </figure>
         </div>
         <figure class="image">
-          <img src="static/images/le_intra_cross_cvpr2024.png" alt="Key figure from previous research" style="height: auto; max-height: 240px;">
+          <img src="images/le_intra_cross_cvpr2024.png" alt="Key figure from previous research" style="height: auto; max-height: 240px;">
         </figure>
         <!-- Button links directly below image -->
         <div class="buttons has-addons mt-2 mb-3"> <!-- Adjust margin top and bottom -->
@@ -336,6 +374,19 @@
 <!-- You can add a tracker to track page visits by creating an account at statcounter.com -->
 
     <!-- End of Statcounter Code -->
+
+  <!-- Add this script at the end of your body tag -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const navbarBurger = document.getElementById('navbarBurger');
+      const navbarMenu = document.getElementById('navbarMenu');
+
+      navbarBurger.addEventListener('click', () => {
+        navbarBurger.classList.toggle('is-active');
+        navbarMenu.classList.toggle('is-active');
+      });
+    });
+  </script>
 
   </body>
   </html>
