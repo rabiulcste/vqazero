@@ -223,21 +223,21 @@
 
 <!-- Approach -->
 <section class="section is-small is-light">
-    <div class="container is-max-desktop">
-      <h2 class="title is-3">Approach</h2>
-  
-      <p>
-        We explore fine-tuning-free prompting techniques applied to vision-language models, specifically state-of-the-art BLIP2, Kosmos2, OpenFlamingo, and multimodal instruction-tuned LLaVa. We mainly focus on the following prompting approaches:
-      </p>
-      <ul>
-        <li>Zero- and few-shot prompt templates (commonly explored in NLP).</li>
-        <li>Chain-of-thought reasoning for VQA.</li>
-        <li>A two-step VQA method, proposing captioning as additional visual context for VLMs.</li>
-      </ul>
-      <p>
-        Existing vision-language models (VLMs) already show good zero-shot VQA performance. Our prompting techniques (especially captioning in few-shot VQA) lead to a substantial performance increase across benchmarks. However, though instruction-tuned models are claimed to show strong reasoning abilities, our tests found these reasoning abilities, particularly the chain-of-thought, to be deficient in diverse benchmarks. We hope our work will inspire future research in this direction.
-      </p>
-    </div>
+  <div class="container is-max-desktop">
+    <h2 class="title is-3">Approach</h2>
+    We explore fine-tuning-free prompting techniques applied to vision-language models. Our investigation includes:
+    <ol>
+      <li><strong>Choice of the Question Template:</strong> We investigate different question templates to guide effective answer generation, by varying the structure and phrasing of questions. Further details are in §3.1.</li>
+
+      <li><strong>Leveraging Captions for Enhanced Context:</strong> We investigate whether zero-shot VQA performance of VLMs can be improved by incorporating image captions as additional visual cues. (§3.2). We generate image captions with varying levels of detail and relevance to the question.</li>
+
+      <li><strong>Incorporating Chain-of-thought Reasoning:</strong> Inspired by the success of chain-of-thought (CoT) reasoning in language models, we investigate its application in VQA. This approach prompts the model to provide step-by-step rationale alongside answers (§3.3).</li>
+     
+      <li><strong>Incorporating Text-only Few-shot Examples:</strong> We incorporate text-only few-shot examples to enhance model performance, particularly in knowledge-based tasks. (§3.4).</li>
+
+      <li><strong>Elevating VQA Metrics for Generative VLMs:</strong> We improve the traditional string-matching VQA metric with minimal modifications by introducing LLM-based pre-processing to refine verbose model outputs, aligning them with the style of reference answers.</li>
+    </ol>
+  </div>
 </section>
 
 <!-- End Approach -->
@@ -246,7 +246,7 @@
 <section class="section is-small is-light">
     <div class="container is-max-desktop">
         <h2 class="title is-3">Results</h2>
-        <p>We report the baseline and best setting results. Please check the paper for more results.</p>
+        <p>We investigate how different qualities and types of image captions, presented as text-based visual cues, impact zero-shot VQA performance in VLMs. We report the baseline and best setting results. Please check the paper for more results.</p>
         <!-- Add the image table here -->
         <figure class="image">
             <img src="images/experiments_result.png" alt="Experiments Result">
@@ -255,11 +255,12 @@
 
     <div class="container is-max-desktop mt-6 mb-5">
         <h3 class="title is-4">Additional Findings</h3>
+        <p></p>Therefore, our findings suggest that while each model has its unique preferences, employing <strong>well-optimized templates is crucial for best performance in zero-shot VQA tasks.</strong></p>
     </div>
 
     <div class="container">
         <figure class="image mb-5">
-            <img src="images/template_sensitivity_plot.png" alt="Scaling with VisMin data">
+            <img src="images/template_sensitivity_plot.png" alt="Template Sensitivity Plot">
         </figure>
     </div>
   
@@ -309,18 +310,6 @@
             Contrasting Intra-modal and Ranking Cross-modal Hard Negatives to Enhance Visio-linguistic Compositional Understanding
           </a>
         </h3>
-        <div class="is-size-5 publication-authors">
-          <!-- Paper authors -->
-          <span class="author-block">
-            <a href="https://zhangle.netlify.app/" target="_blank">Le Zhang</a>,
-          </span>
-          <span class="author-block">
-            <a href="https://rabiul.me/" target="_blank">Rabiul Awal</a>,
-          </span>
-          <span class="author-block">
-            <a href="https://www.iro.umontreal.ca/~agrawal/" target="_blank">Aishwarya Agrawal</a>
-          </span>
-        </div>
         <p class="content has-text-justified">
           Our current findings build upon our previous work, focusing on addressing the gaps in compositional reasoning by enhancing the alignment between images and captions. This research was pivotal in shaping the methodologies employed in our current project.
         </p>
